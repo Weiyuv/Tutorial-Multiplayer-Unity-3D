@@ -12,8 +12,6 @@ public class CrystalCollector : NetworkBehaviour
         if (!IsOwner)
             return;
 
-        Debug.Log("[COLLECTOR] ESTÁ RODANDO");
-
         if (Keyboard.current != null &&
             Keyboard.current.eKey.wasPressedThisFrame)
         {
@@ -32,7 +30,8 @@ public class CrystalCollector : NetworkBehaviour
                 crystal.gameObject.name
             );
 
-            if (!NetworkManager.Singleton.IsListening)
+            if (NetworkManager.Singleton == null ||
+                !NetworkManager.Singleton.IsListening)
             {
                 Debug.LogWarning(
                     "[COLLECTOR] NetworkManager não está rodando!"
@@ -54,11 +53,6 @@ public class CrystalCollector : NetworkBehaviour
                 FindObjectsSortMode.None
             );
 
-        Debug.Log(
-            "[COLLECTOR] Cristais encontrados na cena: " +
-            crystals.Length
-        );
-
         Crystal closest = null;
         float closestDistance = collectDistance;
 
@@ -67,13 +61,6 @@ public class CrystalCollector : NetworkBehaviour
             float distance = Vector3.Distance(
                 transform.position,
                 crystal.transform.position
-            );
-
-            Debug.Log(
-                "[COLLECTOR] " +
-                crystal.gameObject.name +
-                " distância: " +
-                distance.ToString("F2")
             );
 
             if (distance <= closestDistance)
@@ -89,9 +76,7 @@ public class CrystalCollector : NetworkBehaviour
     [ServerRpc]
     private void CollectCrystalServerRpc(ulong crystalId)
     {
-        Debug.Log(
-            "[COLLECTOR] SERVER RPC RECEBIDO!"
-        );
+        Debug.Log("[COLLECTOR] SERVER RPC RECEBIDO!");
 
         if (!NetworkManager.Singleton.SpawnManager.SpawnedObjects
             .TryGetValue(
@@ -141,6 +126,21 @@ public class CrystalCollector : NetworkBehaviour
             "[COLLECTOR] SERVIDOR: CRYSTAL COLETADO!"
         );
 
+        // Spawna uma bola perto do jogador que coletou
+        if (BallSpawner.Instance != null)
+        {
+            BallSpawner.Instance.SpawnBallNearPlayer(
+                transform.position
+            );
+        }
+        else
+        {
+            Debug.LogError(
+                "[COLLECTOR] BALLSPAWNER NÃO ENCONTRADO!"
+            );
+        }
+
+        // Remove o cristal da rede
         crystalObject.Despawn();
     }
 }

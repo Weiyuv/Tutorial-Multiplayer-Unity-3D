@@ -5,44 +5,110 @@ public class BallSpawner : NetworkBehaviour
 {
     public static BallSpawner Instance;
 
+    [Header("Ball")]
     [SerializeField] private GameObject ballPrefab;
 
+    [Header("Distance From Player")]
     [SerializeField] private float minDistance = 3f;
     [SerializeField] private float maxDistance = 8f;
+
+    [Header("Ground")]
+    [SerializeField] private float raycastHeight = 50f;
+    [SerializeField] private float raycastDistance = 100f;
+    [SerializeField] private float groundOffset = 0.5f;
 
     private void Awake()
     {
         Instance = this;
     }
 
-    public void SpawnBall(Vector3 playerPosition)
+    public void SpawnBallNearPlayer(Vector3 playerPosition)
     {
         if (!IsServer)
+        {
+            Debug.LogWarning("[BALL] Não é o servidor!");
             return;
+        }
 
-        Vector2 direction = Random.insideUnitCircle.normalized;
-        float distance = Random.Range(minDistance, maxDistance);
+        if (ballPrefab == null)
+        {
+            Debug.LogError("[BALL] Ball Prefab não foi configurado!");
+            return;
+        }
 
-        Vector3 spawnPosition = playerPosition +
-            new Vector3(direction.x, 0f, direction.y) * distance;
+        // Escolhe uma direção aleatória no plano 3D (X/Z)
+        Vector2 randomDirection = Random.insideUnitCircle.normalized;
 
+        float distance = Random.Range(
+            minDistance,
+            maxDistance
+        );
+
+        // Posição aleatória ao redor do Player
+        Vector3 randomPosition =
+            playerPosition +
+            new Vector3(
+                randomDirection.x,
+                0f,
+                randomDirection.y
+            ) * distance;
+
+        // Começa o Raycast bem acima da posição escolhida
+        Vector3 rayOrigin =
+            randomPosition +
+            Vector3.up * raycastHeight;
+
+        // Procura o chão para baixo
+        if (!Physics.Raycast(
+            rayOrigin,
+            Vector3.down,
+            out RaycastHit hit,
+            raycastDistance))
+        {
+            Debug.LogWarning(
+                "[BALL] Não encontrou o chão em " +
+                randomPosition
+            );
+
+            return;
+        }
+
+        // Coloca a bola sobre a superfície
+        Vector3 spawnPosition =
+            hit.point +
+            Vector3.up * groundOffset;
+
+        Debug.Log(
+            "[BALL] Spawn position: " +
+            spawnPosition
+        );
+
+        // Cria a bola
         GameObject ball = Instantiate(
             ballPrefab,
             spawnPosition,
             Quaternion.identity
         );
 
-        NetworkObject netObj = ball.GetComponent<NetworkObject>();
+        // Pega o NetworkObject
+        NetworkObject networkObject =
+            ball.GetComponent<NetworkObject>();
 
-        if (netObj == null)
+        if (networkObject == null)
         {
-            Debug.LogError("[BALL] Ball prefab não tem NetworkObject!");
+            Debug.LogError(
+                "[BALL] O Ball Prefab não possui NetworkObject!"
+            );
+
             Destroy(ball);
             return;
         }
 
-        netObj.Spawn();
+        // Sincroniza a bola com todos os jogadores
+        networkObject.Spawn();
 
-        Debug.Log("[BALL] Bola spawnada em " + spawnPosition);
+        Debug.Log(
+            "[BALL] BOLA SPAWNADA COM SUCESSO!"
+        );
     }
 }

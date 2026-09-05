@@ -657,6 +657,75 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: f0271df749728104eac22c3d897fd8ce, type: 3}
+--- !u!1001 &872704072
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 6183489406492745842, guid: 84c73734bacf38a4b864fae387a6a966, type: 3}
+      propertyPath: m_InScenePlaced
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6183489406492745842, guid: 84c73734bacf38a4b864fae387a6a966, type: 3}
+      propertyPath: GlobalObjectIdHash
+      value: 2355738045
+      objectReference: {fileID: 0}
+    - target: {fileID: 6183489406492745842, guid: 84c73734bacf38a4b864fae387a6a966, type: 3}
+      propertyPath: InScenePlacedSourceGlobalObjectIdHash
+      value: 2039952046
+      objectReference: {fileID: 0}
+    - target: {fileID: 6905219550203890450, guid: 84c73734bacf38a4b864fae387a6a966, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 3.9393756
+      objectReference: {fileID: 0}
+    - target: {fileID: 6905219550203890450, guid: 84c73734bacf38a4b864fae387a6a966, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.5000007
+      objectReference: {fileID: 0}
+    - target: {fileID: 6905219550203890450, guid: 84c73734bacf38a4b864fae387a6a966, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 5.3202934
+      objectReference: {fileID: 0}
+    - target: {fileID: 6905219550203890450, guid: 84c73734bacf38a4b864fae387a6a966, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6905219550203890450, guid: 84c73734bacf38a4b864fae387a6a966, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6905219550203890450, guid: 84c73734bacf38a4b864fae387a6a966, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6905219550203890450, guid: 84c73734bacf38a4b864fae387a6a966, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6905219550203890450, guid: 84c73734bacf38a4b864fae387a6a966, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6905219550203890450, guid: 84c73734bacf38a4b864fae387a6a966, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6905219550203890450, guid: 84c73734bacf38a4b864fae387a6a966, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8226914301085550679, guid: 84c73734bacf38a4b864fae387a6a966, type: 3}
+      propertyPath: m_Name
+      value: Bola
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 84c73734bacf38a4b864fae387a6a966, type: 3}
 --- !u!1 &874605735
 GameObject:
   m_ObjectHideFlags: 0
@@ -1184,6 +1253,9 @@ MonoBehaviour:
   ballPrefab: {fileID: 8226914301085550679, guid: 84c73734bacf38a4b864fae387a6a966, type: 3}
   minDistance: 3
   maxDistance: 8
+  raycastHeight: 50
+  raycastDistance: 100
+  groundOffset: 0.5
 --- !u!4 &1601505153
 Transform:
   m_ObjectHideFlags: 0
@@ -2032,3 +2104,4 @@ SceneRoots:
   - {fileID: 1837856118}
   - {fileID: 356801352}
   - {fileID: 1601505153}
+  - {fileID: 872704072}
