@@ -1,0 +1,4 @@
+<ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <Style src="project://database/Assets/CrossHairuss.uss?fileID=7433441132597879392&amp;guid=48fd83fa8bb0e204d90cc8e058fbc491&amp;type=3#CrossHairuss"/>
+    <ui:VisualElement name="Crosshair" style="flex-grow: 1; height: 10px; width: 9px; top: 544px; left: 928px; visibility: visible; overflow: visible; right: auto; bottom: auto;"/>
+</ui:UXML>
