@@ -1,28 +1,25 @@
+
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 [RequireComponent(typeof(CharacterController))]
-public class ThirdPersonCameraController : NetworkBehaviour
+public class CameraPOV : NetworkBehaviour
 {
     [Header("Camera")]
-    [SerializeField] private Camera playerCamera;
-    [SerializeField] private Transform cameraPivot;
-    [SerializeField] private float cameraDistance = 3.5f;
-    [SerializeField] private float shoulderOffset = 0.65f;
-    [SerializeField] private float cameraHeight = 1.5f;
+    [SerializeField] private UnityEngine.Camera playerCamera;
+    [SerializeField] private Vector3 cameraOffset = new Vector3(0f, 1.6f, 0f);
     [SerializeField] private float mouseSensitivity = 0.12f;
-    [SerializeField] private float minPitch = -35f;
-    [SerializeField] private float maxPitch = 70f;
+    [SerializeField] private float minPitch = -85f;
+    [SerializeField] private float maxPitch = 85f;
 
     [Header("Movement")]
     [SerializeField] private float moveSpeed = 5f;
     [SerializeField] private float gravity = -20f;
-    [SerializeField] private float rotationSmoothness = 12f;
 
     private CharacterController characterController;
     private float yaw;
-    private float pitch = 10f;
+    private float pitch;
     private float verticalVelocity;
     private bool cursorLocked = true;
 
@@ -30,19 +27,12 @@ public class ThirdPersonCameraController : NetworkBehaviour
     {
         characterController = GetComponent<CharacterController>();
 
-        if (cameraPivot == null)
-        {
-            Transform existingPivot = transform.Find("CameraPivot");
-
-            if (existingPivot != null)
-                cameraPivot = existingPivot;
-        }
-
         if (playerCamera == null)
         {
-            Camera[] cameras = GetComponentsInChildren<Camera>(true);
+            UnityEngine.Camera[] cameras =
+                GetComponentsInChildren<UnityEngine.Camera>(true);
 
-            foreach (Camera cam in cameras)
+            foreach (UnityEngine.Camera cam in cameras)
             {
                 if (cam != null)
                 {
@@ -52,13 +42,15 @@ public class ThirdPersonCameraController : NetworkBehaviour
             }
         }
 
-        if (cameraPivot == null)
+        if (playerCamera == null)
         {
-            GameObject pivotObject = new GameObject("CameraPivot");
-            cameraPivot = pivotObject.transform;
-            cameraPivot.SetParent(transform);
-            cameraPivot.localPosition = new Vector3(0f, cameraHeight, 0f);
-            cameraPivot.localRotation = Quaternion.identity;
+            GameObject cameraObject = new GameObject("FirstPersonCamera");
+            cameraObject.transform.SetParent(transform);
+            cameraObject.transform.localPosition = Vector3.zero;
+            cameraObject.transform.localRotation = Quaternion.identity;
+
+            playerCamera = cameraObject.AddComponent<UnityEngine.Camera>();
+            cameraObject.AddComponent<AudioListener>();
         }
     }
 
@@ -84,6 +76,8 @@ public class ThirdPersonCameraController : NetworkBehaviour
             return;
 
         yaw = transform.eulerAngles.y;
+        pitch = 0f;
+
         LockCursor(true);
     }
 
@@ -105,29 +99,14 @@ public class ThirdPersonCameraController : NetworkBehaviour
 
     private void LateUpdate()
     {
-        if (!IsOwner || playerCamera == null || cameraPivot == null)
+        if (!IsOwner || playerCamera == null)
             return;
 
-        Quaternion yawRotation = Quaternion.Euler(0f, yaw, 0f);
-        Quaternion cameraRotation = Quaternion.Euler(pitch, yaw, 0f);
-
-        Vector3 shoulderPosition =
-            cameraPivot.position +
-            yawRotation * Vector3.right * shoulderOffset;
-
         playerCamera.transform.position =
-            shoulderPosition -
-            cameraRotation * Vector3.forward * cameraDistance;
-
-        Vector3 lookTarget =
-            cameraPivot.position +
-            cameraRotation * Vector3.forward * 10f;
+            transform.TransformPoint(cameraOffset);
 
         playerCamera.transform.rotation =
-            Quaternion.LookRotation(
-                lookTarget - playerCamera.transform.position,
-                Vector3.up
-            );
+            Quaternion.Euler(pitch, yaw, 0f);
     }
 
     private void HandleCursor()
@@ -182,21 +161,10 @@ public class ThirdPersonCameraController : NetworkBehaviour
         Vector3 inputDirection =
             new Vector3(horizontal, 0f, vertical).normalized;
 
-        Quaternion yawRotation = Quaternion.Euler(0f, yaw, 0f);
-
         Vector3 moveDirection =
-            yawRotation * inputDirection;
+            Quaternion.Euler(0f, yaw, 0f) * inputDirection;
 
-        if (inputDirection.sqrMagnitude > 0.01f)
-        {
-            Quaternion targetRotation = Quaternion.Euler(0f, yaw, 0f);
-
-            transform.rotation = Quaternion.Slerp(
-                transform.rotation,
-                targetRotation,
-                rotationSmoothness * Time.deltaTime
-            );
-        }
+        transform.rotation = Quaternion.Euler(0f, yaw, 0f);
 
         if (characterController.isGrounded && verticalVelocity < 0f)
             verticalVelocity = -2f;
@@ -213,10 +181,11 @@ public class ThirdPersonCameraController : NetworkBehaviour
     private void LockCursor(bool locked)
     {
         cursorLocked = locked;
-        Cursor.lockState = locked
+
+        UnityEngine.Cursor.lockState = locked
             ? CursorLockMode.Locked
             : CursorLockMode.None;
 
-        Cursor.visible = !locked;
+        UnityEngine.Cursor.visible = !locked;
     }
 }

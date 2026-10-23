@@ -11,7 +11,7 @@ public class PlayerDash : NetworkBehaviour
     [SerializeField] private float dashCooldown = 1f;
 
     private CharacterController controller;
-    private ThirdPersonCameraController cameraController;
+    private CameraPOV cameraController;
 
     private float dashTimer;
     private float cooldownTimer;
@@ -21,7 +21,7 @@ public class PlayerDash : NetworkBehaviour
     private void Awake()
     {
         controller = GetComponent<CharacterController>();
-        cameraController = GetComponent<ThirdPersonCameraController>();
+        cameraController = GetComponent<CameraPOV>();
     }
 
     private void Update()
