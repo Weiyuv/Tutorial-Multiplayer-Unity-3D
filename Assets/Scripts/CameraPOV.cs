@@ -8,20 +8,28 @@ public class CameraPOV : NetworkBehaviour
 {
     [Header("Camera")]
     [SerializeField] private UnityEngine.Camera playerCamera;
-    [SerializeField] private Vector3 cameraOffset = new Vector3(0f, 1.6f, 0f);
+    [SerializeField] private Vector3 cameraTargetOffset = new Vector3(0f, 1.6f, 0f);
+    [SerializeField] private float cameraDistance = 3.5f;
+    [SerializeField] private float shoulderOffset = 0.65f;
+    [SerializeField] private float cameraHeight = 0.15f;
+    [SerializeField] private float cameraSmoothness = 15f;
     [SerializeField] private float mouseSensitivity = 0.12f;
-    [SerializeField] private float minPitch = -85f;
-    [SerializeField] private float maxPitch = 85f;
+    [SerializeField] private float minPitch = -35f;
+    [SerializeField] private float maxPitch = 70f;
 
     [Header("Movement")]
     [SerializeField] private float moveSpeed = 5f;
     [SerializeField] private float gravity = -20f;
+    [SerializeField] private float rotationSmoothness = 12f;
 
     private CharacterController characterController;
     private float yaw;
     private float pitch;
     private float verticalVelocity;
     private bool cursorLocked = true;
+
+    private Vector3 currentCameraPosition;
+    private bool cameraPositionInitialized;
 
     private void Awake()
     {
@@ -44,7 +52,7 @@ public class CameraPOV : NetworkBehaviour
 
         if (playerCamera == null)
         {
-            GameObject cameraObject = new GameObject("FirstPersonCamera");
+            GameObject cameraObject = new GameObject("ThirdPersonCamera");
             cameraObject.transform.SetParent(transform);
             cameraObject.transform.localPosition = Vector3.zero;
             cameraObject.transform.localRotation = Quaternion.identity;
@@ -76,7 +84,9 @@ public class CameraPOV : NetworkBehaviour
             return;
 
         yaw = transform.eulerAngles.y;
-        pitch = 0f;
+        pitch = 10f;
+
+        cameraPositionInitialized = false;
 
         LockCursor(true);
     }
@@ -102,11 +112,34 @@ public class CameraPOV : NetworkBehaviour
         if (!IsOwner || playerCamera == null)
             return;
 
-        playerCamera.transform.position =
-            transform.TransformPoint(cameraOffset);
+        Vector3 targetPosition =
+            transform.position +
+            Vector3.up * cameraTargetOffset.y;
 
-        playerCamera.transform.rotation =
-            Quaternion.Euler(pitch, yaw, 0f);
+        Quaternion cameraRotation = Quaternion.Euler(pitch, yaw, 0f);
+
+        Vector3 shoulderPosition =
+            targetPosition +
+            cameraRotation * new Vector3(shoulderOffset, cameraHeight, 0f);
+
+        Vector3 desiredPosition =
+            shoulderPosition -
+            cameraRotation * Vector3.forward * cameraDistance;
+
+        if (!cameraPositionInitialized)
+        {
+            currentCameraPosition = desiredPosition;
+            cameraPositionInitialized = true;
+        }
+
+        currentCameraPosition = Vector3.Lerp(
+            currentCameraPosition,
+            desiredPosition,
+            1f - Mathf.Exp(-cameraSmoothness * Time.deltaTime)
+        );
+
+        playerCamera.transform.position = currentCameraPosition;
+        playerCamera.transform.rotation = cameraRotation;
     }
 
     private void HandleCursor()
@@ -161,10 +194,27 @@ public class CameraPOV : NetworkBehaviour
         Vector3 inputDirection =
             new Vector3(horizontal, 0f, vertical).normalized;
 
-        Vector3 moveDirection =
-            Quaternion.Euler(0f, yaw, 0f) * inputDirection;
+        Vector3 cameraForward =
+            Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
 
-        transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+        Vector3 cameraRight =
+            Quaternion.Euler(0f, yaw, 0f) * Vector3.right;
+
+        Vector3 moveDirection =
+            cameraForward * inputDirection.z +
+            cameraRight * inputDirection.x;
+
+        if (moveDirection.sqrMagnitude > 0.01f)
+        {
+            Quaternion targetRotation =
+                Quaternion.LookRotation(moveDirection, Vector3.up);
+
+            transform.rotation = Quaternion.Slerp(
+                transform.rotation,
+                targetRotation,
+                1f - Mathf.Exp(-rotationSmoothness * Time.deltaTime)
+            );
+        }
 
         if (characterController.isGrounded && verticalVelocity < 0f)
             verticalVelocity = -2f;
