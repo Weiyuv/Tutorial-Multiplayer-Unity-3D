@@ -10,9 +10,16 @@ public class MechaCombat : NetworkBehaviour
 
     [Header("Combate")]
     [SerializeField] private float attackCooldown = 0.6f;
+    [SerializeField] private float attackDuration = 0.8f;
 
+    private MechaMovement movement;
     private float nextAttackTime;
+    private float attackEndTime;
+    private bool isAttacking;
     private bool isDefending;
+
+    private Vector3 lockedPosition;
+    private Quaternion lockedRotation;
 
     private static readonly int AttackTrigger =
         Animator.StringToHash("Attack");
@@ -24,6 +31,11 @@ public class MechaCombat : NetworkBehaviour
     {
         if (animator == null)
             animator = GetComponentInChildren<Animator>();
+
+        movement = GetComponent<MechaMovement>();
+
+        if (animator != null)
+            animator.applyRootMotion = false;
     }
 
     public override void OnNetworkSpawn()
@@ -36,27 +48,68 @@ public class MechaCombat : NetworkBehaviour
         if (!IsOwner || Mouse.current == null || animator == null)
             return;
 
-        HandleAttack();
-        HandleDefense();
+        if (isAttacking)
+        {
+            if (Time.time >= attackEndTime)
+            {
+                isAttacking = false;
+
+                if (movement != null)
+                    movement.SetMovementLocked(false);
+            }
+        }
+
+        if (Mouse.current.leftButton.wasPressedThisFrame &&
+            !isAttacking &&
+            !isDefending &&
+            Time.time >= nextAttackTime)
+        {
+            StartAttack();
+        }
+
+        isDefending = Mouse.current.rightButton.isPressed && !isAttacking;
+        animator.SetBool(DefendBool, isDefending);
     }
 
-    private void HandleAttack()
+    private void StartAttack()
     {
-        if (!Mouse.current.leftButton.wasPressedThisFrame)
-            return;
-
-        if (Time.time < nextAttackTime || isDefending)
-            return;
-
+        isAttacking = true;
+        attackEndTime = Time.time + attackDuration;
         nextAttackTime = Time.time + attackCooldown;
 
+        lockedPosition = transform.position;
+        lockedRotation = transform.rotation;
+
+        if (movement != null)
+            movement.SetMovementLocked(true);
+
+        animator.ResetTrigger(AttackTrigger);
         animator.SetTrigger(AttackTrigger);
     }
 
-    private void HandleDefense()
+    private void LateUpdate()
     {
-        isDefending = Mouse.current.rightButton.isPressed;
+        if (!IsOwner || !isAttacking)
+            return;
 
-        animator.SetBool(DefendBool, isDefending);
+        transform.SetPositionAndRotation(lockedPosition, lockedRotation);
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        UnlockMovement();
+    }
+
+    private void OnDisable()
+    {
+        UnlockMovement();
+    }
+
+    private void UnlockMovement()
+    {
+        isAttacking = false;
+
+        if (movement != null)
+            movement.SetMovementLocked(false);
     }
 }

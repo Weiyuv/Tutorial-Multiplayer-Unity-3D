@@ -27,6 +27,9 @@ public class MechaMovement : NetworkBehaviour
     private float nextDashTime;
 
     private bool isDashing;
+    private bool movementLocked;
+
+    public bool IsMovementLocked => movementLocked;
 
     private void Awake()
     {
@@ -34,20 +37,49 @@ public class MechaMovement : NetworkBehaviour
 
         if (animator == null)
             animator = GetComponentInChildren<Animator>();
+
+        if (animator != null)
+            animator.applyRootMotion = false;
     }
 
     public override void OnNetworkSpawn()
     {
-        enabled = IsOwner;
+        if (!IsOwner)
+        {
+            enabled = false;
+            return;
+        }
 
-        if (IsOwner)
-            Cursor.lockState = CursorLockMode.Locked;
+        enabled = true;
+        Cursor.lockState = CursorLockMode.Locked;
+    }
+
+    public void SetMovementLocked(bool locked)
+    {
+        movementLocked = locked;
+
+        if (locked)
+        {
+            isDashing = false;
+            dashTimer = 0f;
+            dashDirection = Vector3.zero;
+        }
     }
 
     private void Update()
     {
         if (!IsOwner || Keyboard.current == null)
             return;
+
+        if (movementLocked)
+        {
+            isDashing = false;
+            dashTimer = 0f;
+
+            ApplyGravity();
+            UpdateAnimations();
+            return;
+        }
 
         HandleMovement();
         HandleDash();
@@ -76,8 +108,8 @@ public class MechaMovement : NetworkBehaviour
         Vector3 right = Vector3.ProjectOnPlane(
             cam.right, Vector3.up).normalized;
 
-        Vector3 direction = forward * input.y + right * input.x;
-        direction.Normalize();
+        Vector3 direction =
+            (forward * input.y + right * input.x).normalized;
 
         if (isDashing)
         {
@@ -144,25 +176,26 @@ public class MechaMovement : NetworkBehaviour
 
         verticalVelocity.y += gravity * Time.deltaTime;
 
-        controller.Move(
-            verticalVelocity * Time.deltaTime);
+        controller.Move(verticalVelocity * Time.deltaTime);
     }
 
     private void UpdateAnimations()
     {
-        if (animator == null || Keyboard.current == null)
+        if (animator == null)
             return;
 
         Vector2 input = Vector2.zero;
 
-        if (Keyboard.current.wKey.isPressed) input.y += 1f;
-        if (Keyboard.current.sKey.isPressed) input.y -= 1f;
-        if (Keyboard.current.dKey.isPressed) input.x += 1f;
-        if (Keyboard.current.aKey.isPressed) input.x -= 1f;
+        if (!movementLocked && Keyboard.current != null)
+        {
+            if (Keyboard.current.wKey.isPressed) input.y += 1f;
+            if (Keyboard.current.sKey.isPressed) input.y -= 1f;
+            if (Keyboard.current.dKey.isPressed) input.x += 1f;
+            if (Keyboard.current.aKey.isPressed) input.x -= 1f;
+        }
 
         animator.SetFloat("Speed", input.magnitude);
         animator.SetBool("IsDashing", isDashing);
-        animator.SetBool("IsGrounded", controller.isGrounded);
     }
 
     private void OnDisable()
