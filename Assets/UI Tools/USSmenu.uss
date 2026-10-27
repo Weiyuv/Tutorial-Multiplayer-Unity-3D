@@ -40,12 +40,85 @@ Button {
     border-right-color: rgb(35, 75, 110);
 }
 
+Button:hover {
+    background-color: rgb(25, 90, 140);
+    color: rgb(255, 255, 255);
+}
+
 #PlayButton {
     background-color: rgb(10, 100, 165);
     border-left-color: rgb(100, 220, 255);
 }
 
-Button:hover {
-    background-color: rgb(25, 90, 140);
-    color: rgb(255, 255, 255);
+#SettingsPanel {
+    display: none;
+    width: 620px;
+    padding: 30px;
+    background-color: rgb(11, 23, 41);
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-top-color: rgb(40, 180, 255);
+    border-bottom-color: rgb(35, 75, 110);
+    border-left-color: rgb(40, 180, 255);
+    border-right-color: rgb(35, 75, 110);
+}
+
+#SettingsTitle {
+    color: rgb(100, 220, 255);
+    font-size: 36px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    margin-bottom: 25px;
+}
+
+.SettingsSection {
+    color: rgb(100, 220, 255);
+    font-size: 20px;
+    -unity-font-style: bold;
+    margin-top: 12px;
+    margin-bottom: 10px;
+}
+
+.SettingsLabel {
+    color: rgb(235, 242, 255);
+    font-size: 17px;
+    margin-bottom: 8px;
+}
+
+#VolumeSlider {
+    width: 100%;
+    margin-bottom: 5px;
+}
+
+#VolumeValue {
+    color: rgb(100, 220, 255);
+    font-size: 16px;
+    -unity-text-align: middle-right;
+    margin-bottom: 12px;
+}
+
+.BindingRow {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 7px;
+}
+
+.BindingName {
+    flex-grow: 1;
+    color: rgb(235, 242, 255);
+    font-size: 16px;
+}
+
+.BindingButton {
+    width: 150px;
+    height: 42px;
+    margin-bottom: 0;
+    font-size: 15px;
+}
+
+#BackButton {
+    margin-top: 22px;
+    background-color: rgb(17, 35, 58);
 }

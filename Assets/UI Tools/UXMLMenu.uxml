@@ -1,11 +1,66 @@
+
 <ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
-    <Style src="project://database/Assets/UI%20Tools/USSmenu.uss?fileID=7433441132597879392&amp;guid=2292c6ae1164daa43b6dc877ba445f4a&amp;type=3#USSmenu"/>
+    <ui:Style src="project://database/Assets/UI%20Tools/USSmenu.uss?fileID=7433441132597879392&amp;guid=2292c6ae1164daa43b6dc877ba445f4a&amp;type=3#USSmenu"/>
+
     <ui:VisualElement name="Root" style="position: absolute; width: 1920px; height: 1080px;">
+
         <ui:Label name="Title" text="MECHA COLOSSEUM"/>
+
         <ui:VisualElement name="MenuButtons">
             <ui:Button name="PlayButton" text="JOGAR"/>
             <ui:Button name="SettingsButton" text="CONFIGURAÇÕES"/>
             <ui:Button name="QuitButton" text="SAIR"/>
+        </ui:VisualElement>
+
+        <ui:VisualElement name="SettingsPanel">
+
+            <ui:Label name="SettingsTitle" text="CONFIGURAÇÕES"/>
+
+            <ui:Label text="ÁUDIO" class="SettingsSection"/>
+
+            <ui:Label text="Volume geral" class="SettingsLabel"/>
+            <ui:Slider name="VolumeSlider" low-value="0" high-value="1" value="1"/>
+            <ui:Label name="VolumeValue" text="100%"/>
+
+            <ui:Label text="CONTROLES" class="SettingsSection"/>
+
+            <ui:VisualElement class="BindingRow">
+                <ui:Label text="Mover para frente" class="BindingName"/>
+                <ui:Button name="ForwardBinding" text="W" class="BindingButton"/>
+            </ui:VisualElement>
+
+            <ui:VisualElement class="BindingRow">
+                <ui:Label text="Mover para trás" class="BindingName"/>
+                <ui:Button name="BackwardBinding" text="S" class="BindingButton"/>
+            </ui:VisualElement>
+
+            <ui:VisualElement class="BindingRow">
+                <ui:Label text="Mover para esquerda" class="BindingName"/>
+                <ui:Button name="LeftBinding" text="A" class="BindingButton"/>
+            </ui:VisualElement>
+
+            <ui:VisualElement class="BindingRow">
+                <ui:Label text="Mover para direita" class="BindingName"/>
+                <ui:Button name="RightBinding" text="D" class="BindingButton"/>
+            </ui:VisualElement>
+
+            <ui:VisualElement class="BindingRow">
+                <ui:Label text="Dash" class="BindingName"/>
+                <ui:Button name="DashBinding" text="SHIFT" class="BindingButton"/>
+            </ui:VisualElement>
+
+            <ui:VisualElement class="BindingRow">
+                <ui:Label text="Atacar" class="BindingName"/>
+                <ui:Label text="MOUSE ESQUERDO" class="BindingName"/>
+            </ui:VisualElement>
+
+            <ui:VisualElement class="BindingRow">
+                <ui:Label text="Defender / Block" class="BindingName"/>
+                <ui:Label text="MOUSE DIREITO" class="BindingName"/>
+            </ui:VisualElement>
+
+            <ui:Button name="BackButton" text="VOLTAR"/>
+
         </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>
