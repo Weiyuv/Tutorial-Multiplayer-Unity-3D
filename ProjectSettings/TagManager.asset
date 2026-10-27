@@ -6,6 +6,7 @@ TagManager:
   tags:
   - CinemachineTarget
   - Crystal
+  - Enemy
   layers:
   - Default
   - TransparentFX

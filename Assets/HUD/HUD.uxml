@@ -1,0 +1,33 @@
+
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:Style src="HUD.uss" />
+
+    <ui:VisualElement name="Root" class="hud-root">
+
+        <ui:VisualElement name="PlayerPanel" class="player-panel">
+            <ui:VisualElement class="health-track">
+                <ui:VisualElement name="PlayerHealthFill" class="health-fill" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement name="EnemyPanel" class="enemy-panel">
+            <ui:VisualElement class="enemy-health-track">
+                <ui:VisualElement name="EnemyHealthFill" class="enemy-health-fill" />
+            </ui:VisualElement>
+            <ui:Label name="EnemyHealthText" text="100%" class="enemy-health-text" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="Crosshair" class="crosshair">
+            <ui:VisualElement class="crosshair-top" />
+            <ui:VisualElement class="crosshair-bottom" />
+            <ui:VisualElement class="crosshair-left" />
+            <ui:VisualElement class="crosshair-right" />
+            <ui:VisualElement class="crosshair-center" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="DashPanel" class="dash-panel">
+            <ui:Label name="DashText" text="DASH READY" class="dash-text ready" />
+        </ui:VisualElement>
+
+    </ui:VisualElement>
+</ui:UXML>

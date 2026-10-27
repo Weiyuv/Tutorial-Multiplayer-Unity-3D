@@ -16,6 +16,9 @@ public class MechaMovement : NetworkBehaviour
     [SerializeField] private float dashDuration = 0.2f;
     [SerializeField] private float dashCooldown = 1f;
 
+    [Header("HUD")]
+    [SerializeField] private HUDController hudController;
+
     [Header("Animacao")]
     [SerializeField] private Animator animator;
 
@@ -30,6 +33,10 @@ public class MechaMovement : NetworkBehaviour
     private bool movementLocked;
 
     public bool IsMovementLocked => movementLocked;
+    public bool IsDashing => isDashing;
+    public float DashCooldown => dashCooldown;
+    public float DashCooldownRemaining =>
+        Mathf.Max(0f, nextDashTime - Time.time);
 
     private void Awake()
     {
@@ -37,6 +44,9 @@ public class MechaMovement : NetworkBehaviour
 
         if (animator == null)
             animator = GetComponentInChildren<Animator>();
+
+        if (hudController == null)
+            hudController = FindFirstObjectByType<HUDController>();
 
         if (animator != null)
             animator.applyRootMotion = false;
@@ -51,6 +61,10 @@ public class MechaMovement : NetworkBehaviour
         }
 
         enabled = true;
+
+        if (hudController == null)
+            hudController = FindFirstObjectByType<HUDController>();
+
         Cursor.lockState = CursorLockMode.Locked;
     }
 
@@ -167,10 +181,20 @@ public class MechaMovement : NetworkBehaviour
         isDashing = true;
         dashTimer = dashDuration;
         nextDashTime = Time.time + dashCooldown;
+
+        if (hudController == null)
+            hudController = FindFirstObjectByType<HUDController>();
+
+        if (hudController != null)
+            hudController.StartDashCooldown(dashCooldown);
     }
 
     private void ApplyGravity()
     {
+        if (controller == null || !controller.enabled ||
+            !controller.gameObject.activeInHierarchy)
+            return;
+
         if (controller.isGrounded && verticalVelocity.y < 0f)
             verticalVelocity.y = -2f;
 

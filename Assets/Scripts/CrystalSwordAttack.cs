@@ -18,9 +18,10 @@ public class CrystalSwordAttack : NetworkBehaviour
     [SerializeField] private float damage = 25f;
     [SerializeField] private float attackCooldown = 0.7f;
     [SerializeField] private float hitDelay = 0.25f;
-    [SerializeField] private float hitRadius = 1.2f;
-    [SerializeField] private Transform attackPoint;
     [SerializeField] private LayerMask targetLayers = ~0;
+
+    [Header("Attack Collider")]
+    [SerializeField] private Collider attackCollider;
 
     private bool attacking;
     private float nextAttackTime;
@@ -35,6 +36,25 @@ public class CrystalSwordAttack : NetworkBehaviour
 
         if (networkAnimator == null)
             networkAnimator = GetComponent<NetworkAnimator>();
+
+        if (attackCollider != null)
+        {
+            attackCollider.isTrigger = true;
+            attackCollider.enabled = false;
+        }
+        else
+        {
+            Debug.LogError(
+                "[SWORD ATTACK] Arraste o Collider da área de ataque para Attack Collider.",
+                this
+            );
+        }
+    }
+
+    public override void OnNetworkSpawn()
+    {
+        if (attackCollider != null)
+            attackCollider.enabled = false;
     }
 
     private void Update()
@@ -79,9 +99,7 @@ public class CrystalSwordAttack : NetworkBehaviour
 
             if (collector != null &&
                 crystal.transform.position != Vector3.zero)
-            {
                 return true;
-            }
         }
 
         return false;
@@ -101,9 +119,9 @@ public class CrystalSwordAttack : NetworkBehaviour
         hitTargets.Clear();
 
         if (networkAnimator != null)
-            networkAnimator.SetTrigger("Attack");
+            networkAnimator.SetTrigger(attackTrigger);
         else if (animator != null)
-            animator.SetTrigger("Attack");
+            animator.SetTrigger(attackTrigger);
 
         StartCoroutine(AttackRoutine());
     }
@@ -112,12 +130,17 @@ public class CrystalSwordAttack : NetworkBehaviour
     {
         yield return new WaitForSeconds(hitDelay);
 
-        if (IsServer)
+        if (IsServer && HasSwordEquipped())
+        {
             PerformHit();
+        }
 
         yield return new WaitForSeconds(
             Mathf.Max(0.05f, attackCooldown - hitDelay)
         );
+
+        if (attackCollider != null)
+            attackCollider.enabled = false;
 
         attacking = false;
     }
@@ -127,14 +150,20 @@ public class CrystalSwordAttack : NetworkBehaviour
         if (!IsServer || !HasSwordEquipped())
             return;
 
-        Vector3 center = attackPoint != null
-            ? attackPoint.position
-            : transform.position + transform.forward * 1.2f
-              + Vector3.up;
+        if (attackCollider == null)
+        {
+            Debug.LogError("[SWORD ATTACK] Attack Collider não configurado.");
+            return;
+        }
 
-        Collider[] hits = Physics.OverlapSphere(
-            center,
-            hitRadius,
+        attackCollider.enabled = true;
+
+        Bounds bounds = attackCollider.bounds;
+
+        Collider[] hits = Physics.OverlapBox(
+            bounds.center,
+            bounds.extents,
+            attackCollider.transform.rotation,
             targetLayers,
             QueryTriggerInteraction.Ignore
         );
@@ -156,21 +185,19 @@ public class CrystalSwordAttack : NetworkBehaviour
                 continue;
 
             MechaHealth health =
-                target.GetComponent<MechaHealth>();
+                target.GetComponentInParent<MechaHealth>();
 
-            if (health != null)
+            if (health != null && !health.IsDead)
+            {
                 health.TakeDamageServer(damage);
+
+                Debug.Log(
+                    "[SWORD ATTACK] " + target.name +
+                    " recebeu " + damage + " de dano."
+                );
+            }
         }
-    }
 
-    private void OnDrawGizmosSelected()
-    {
-        Vector3 center = attackPoint != null
-            ? attackPoint.position
-            : transform.position + transform.forward * 1.2f
-              + Vector3.up;
-
-        Gizmos.color = Color.red;
-        Gizmos.DrawWireSphere(center, hitRadius);
+        attackCollider.enabled = false;
     }
 }
