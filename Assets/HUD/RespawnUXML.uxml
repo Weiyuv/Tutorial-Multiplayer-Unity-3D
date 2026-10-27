@@ -1,0 +1,13 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/HUD/RespawnUSS.uss?fileID=7433441132597879392&amp;guid=64143bb7881f0a3489113b81996a744e&amp;type=3#RespawnUSS"/>
+    <ui:VisualElement name="RespawnOverlay" class="respawn-overlay">
+        <ui:VisualElement name="RespawnPanel" class="respawn-panel">
+            <ui:Label name="GameTitle" text="MECHA COLOSSEUM" class="game-title"/>
+            <ui:VisualElement class="separator"/>
+            <ui:Label name="RespawnTitle" text="UNIDADE DESTRUIDA" class="respawn-title"/>
+            <ui:Label name="RespawnSubtitle" text="Seu mecha foi derrotado." class="respawn-subtitle"/>
+            <ui:Button name="RespawnButton" text="RESPAWN" class="respawn-button"/>
+            <ui:Label name="RespawnFooter" text="AGUARDANDO REINICIALIZACAO" class="respawn-footer"/>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

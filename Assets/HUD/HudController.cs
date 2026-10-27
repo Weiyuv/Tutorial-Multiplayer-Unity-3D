@@ -10,6 +10,7 @@ public class HUDController : MonoBehaviour
     [Header("Configuracao")]
     [SerializeField] private bool showEnemyPanelAtStart = false;
 
+    private VisualElement root;
     private VisualElement playerHealthFill;
     private VisualElement enemyPanel;
     private VisualElement enemyHealthFill;
@@ -34,7 +35,7 @@ public class HUDController : MonoBehaviour
             return;
         }
 
-        VisualElement root = uiDocument.rootVisualElement;
+        root = uiDocument.rootVisualElement;
 
         if (root == null)
         {
@@ -42,6 +43,12 @@ public class HUDController : MonoBehaviour
             enabled = false;
             return;
         }
+
+        // O HUD e apenas visual: nao deve interceptar cliques.
+        root.pickingMode = PickingMode.Ignore;
+
+        // Evita que os elementos visuais do HUD bloqueiem o menu.
+        IgnorarCliquesNosElementosVisuais(root);
 
         playerHealthFill = root.Q<VisualElement>("PlayerHealthFill");
         enemyPanel = root.Q<VisualElement>("EnemyPanel");
@@ -73,6 +80,20 @@ public class HUDController : MonoBehaviour
         SetEnemyHealth(100f, 100f);
         HideEnemyHealth();
         SetDashReady();
+    }
+
+    private void IgnorarCliquesNosElementosVisuais(
+        VisualElement elemento)
+    {
+        if (elemento == null)
+            return;
+
+        elemento.pickingMode = PickingMode.Ignore;
+
+        foreach (VisualElement filho in elemento.Children())
+        {
+            IgnorarCliquesNosElementosVisuais(filho);
+        }
     }
 
     private void Update()

@@ -1,70 +1,102 @@
 
+using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.UIElements;
+using UnityEngine.SceneManagement;
 
 [RequireComponent(typeof(UIDocument))]
 public class RespawnScreen : MonoBehaviour
 {
-    private UIDocument uiDocument;
     private VisualElement overlay;
+    private Button respawnButton;
+
+    private bool isRequestingRespawn;
 
     private void Awake()
     {
-        uiDocument = GetComponent<UIDocument>();
+        UIDocument document = GetComponent<UIDocument>();
+        VisualElement root = document.rootVisualElement;
 
-        VisualElement root = uiDocument.rootVisualElement;
+        overlay = root.Q<VisualElement>("RespawnOverlay");
+        respawnButton = root.Q<Button>("RespawnButton");
 
-        overlay = new VisualElement();
-        overlay.name = "RespawnOverlay";
+        if (overlay == null || respawnButton == null)
+        {
+            Debug.LogError(
+                "[RESPAWN] O UXML precisa ter RespawnOverlay e RespawnButton."
+            );
 
-        overlay.style.position = Position.Absolute;
-        overlay.style.left = 0;
-        overlay.style.right = 0;
-        overlay.style.top = 0;
-        overlay.style.bottom = 0;
+            enabled = false;
+            return;
+        }
 
-        overlay.style.backgroundColor =
-            new Color(0.02f, 0.02f, 0.04f, 0.92f);
+        respawnButton.clicked += RequestRespawn;
 
-        overlay.style.justifyContent = Justify.Center;
-        overlay.style.alignItems = Align.Center;
         overlay.style.display = DisplayStyle.None;
-
-        Label title = new Label("VOCÊ FOI DERROTADO");
-
-        title.style.color = new Color(1f, 0.2f, 0.2f);
-        title.style.fontSize = 36;
-        title.style.unityFontStyleAndWeight = FontStyle.Bold;
-        title.style.unityTextAlign = TextAnchor.MiddleCenter;
-
-        Label subtitle = new Label("AGUARDANDO RESPAWN...");
-
-        subtitle.style.color = Color.white;
-        subtitle.style.fontSize = 18;
-        subtitle.style.marginTop = 16;
-        subtitle.style.unityTextAlign = TextAnchor.MiddleCenter;
-
-        overlay.Add(title);
-        overlay.Add(subtitle);
-
-        root.Add(overlay);
+        EnableRespawnButton();
     }
 
     public void Show()
     {
-        if (overlay != null)
-            overlay.style.display = DisplayStyle.Flex;
+        if (overlay == null)
+            return;
+
+        isRequestingRespawn = false;
+
+        overlay.style.display = DisplayStyle.Flex;
+
+        UnityEngine.Cursor.lockState = CursorLockMode.None;
+        UnityEngine.Cursor.visible = true;
+
+        EnableRespawnButton();
+
+        Debug.Log("[RESPAWN] Tela aberta.");
     }
 
     public void Hide()
     {
-        if (overlay != null)
-            overlay.style.display = DisplayStyle.None;
+        if (overlay == null)
+            return;
+
+        overlay.style.display = DisplayStyle.None;
+
+        UnityEngine.Cursor.lockState = CursorLockMode.Locked;
+        UnityEngine.Cursor.visible = false;
+    }
+
+    private void RequestRespawn()
+    {
+        if (isRequestingRespawn)
+            return;
+
+        isRequestingRespawn = true;
+        respawnButton.SetEnabled(false);
+
+        Debug.Log("[RESPAWN] Reiniciando a cena...");
+
+        if (NetworkManager.Singleton != null &&
+            NetworkManager.Singleton.IsListening)
+        {
+            NetworkManager.Singleton.Shutdown();
+        }
+
+        SceneManager.LoadScene(
+            SceneManager.GetActiveScene().buildIndex
+        );
+    }
+
+    public void EnableRespawnButton()
+    {
+        if (respawnButton == null)
+            return;
+
+        respawnButton.SetEnabled(true);
+        isRequestingRespawn = false;
     }
 
     private void OnDestroy()
     {
-        if (overlay != null)
-            overlay.RemoveFromHierarchy();
+        if (respawnButton != null)
+            respawnButton.clicked -= RequestRespawn;
     }
 }

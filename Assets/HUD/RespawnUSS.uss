@@ -1,0 +1,72 @@
+
+.respawn-overlay {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(5, 7, 12, 0.88);
+}
+
+.respawn-panel {
+    width: 420px;
+    max-width: 90%;
+    padding: 30px;
+    align-items: center;
+    background-color: rgb(15, 18, 25);
+    border-top-width: 2px;
+    border-top-color: rgb(220, 55, 65);
+}
+
+.game-title {
+    color: rgb(190, 195, 205);
+    font-size: 12px;
+    -unity-font-style: bold;
+    margin-bottom: 22px;
+}
+
+.separator {
+    width: 100%;
+    height: 1px;
+    background-color: rgba(255, 255, 255, 0.12);
+    margin-bottom: 25px;
+}
+
+.respawn-title {
+    color: rgb(240, 75, 85);
+    font-size: 25px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    margin-bottom: 10px;
+}
+
+.respawn-subtitle {
+    color: rgb(175, 180, 190);
+    font-size: 13px;
+    -unity-text-align: middle-center;
+    margin-bottom: 28px;
+}
+
+.respawn-button {
+    width: 100%;
+    height: 46px;
+    margin: 0;
+    background-color: rgb(190, 42, 52);
+    color: white;
+    font-size: 14px;
+    -unity-font-style: bold;
+    border-radius: 2px;
+}
+
+.respawn-button:hover {
+    background-color: rgb(225, 55, 65);
+}
+
+.respawn-footer {
+    margin-top: 20px;
+    color: rgb(100, 105, 115);
+    font-size: 9px;
+    -unity-text-align: middle-center;
+}

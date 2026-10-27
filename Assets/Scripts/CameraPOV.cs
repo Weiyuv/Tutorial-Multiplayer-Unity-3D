@@ -23,6 +23,8 @@ public class CameraPOV : NetworkBehaviour
     [SerializeField] private float rotationSmoothness = 12f;
 
     private CharacterController characterController;
+    private MechaHealth mechaHealth;
+
     private float yaw;
     private float pitch;
     private float verticalVelocity;
@@ -34,6 +36,7 @@ public class CameraPOV : NetworkBehaviour
     private void Awake()
     {
         characterController = GetComponent<CharacterController>();
+        mechaHealth = GetComponent<MechaHealth>();
 
         if (playerCamera == null)
         {
@@ -85,7 +88,7 @@ public class CameraPOV : NetworkBehaviour
 
         yaw = transform.eulerAngles.y;
         pitch = 10f;
-
+        verticalVelocity = 0f;
         cameraPositionInitialized = false;
 
         LockCursor(true);
@@ -99,8 +102,24 @@ public class CameraPOV : NetworkBehaviour
 
     private void Update()
     {
-        if (!IsOwner)
+        if (!IsSpawned || !IsOwner)
             return;
+
+        // Não processa comandos enquanto o mecha estiver morto.
+        if (mechaHealth != null && mechaHealth.IsDead)
+        {
+            verticalVelocity = 0f;
+            return;
+        }
+
+        // O CharacterController pode ser desativado durante a morte.
+        if (characterController == null ||
+            !characterController.enabled ||
+            !characterController.gameObject.activeInHierarchy)
+        {
+            verticalVelocity = 0f;
+            return;
+        }
 
         HandleCursor();
         HandleCameraInput();
@@ -109,7 +128,7 @@ public class CameraPOV : NetworkBehaviour
 
     private void LateUpdate()
     {
-        if (!IsOwner || playerCamera == null)
+        if (!IsSpawned || !IsOwner || playerCamera == null)
             return;
 
         Vector3 targetPosition =
@@ -173,6 +192,11 @@ public class CameraPOV : NetworkBehaviour
 
     private void HandleMovement()
     {
+        if (characterController == null ||
+            !characterController.enabled ||
+            !characterController.gameObject.activeInHierarchy)
+            return;
+
         if (Keyboard.current == null)
             return;
 
@@ -225,7 +249,13 @@ public class CameraPOV : NetworkBehaviour
             moveDirection * moveSpeed +
             Vector3.up * verticalVelocity;
 
-        characterController.Move(velocity * Time.deltaTime);
+        // Última proteção antes de chamar Move().
+        if (characterController != null &&
+            characterController.enabled &&
+            characterController.gameObject.activeInHierarchy)
+        {
+            characterController.Move(velocity * Time.deltaTime);
+        }
     }
 
     private void LockCursor(bool locked)

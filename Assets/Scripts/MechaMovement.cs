@@ -23,6 +23,8 @@ public class MechaMovement : NetworkBehaviour
     [SerializeField] private Animator animator;
 
     private CharacterController controller;
+    private MechaHealth mechaHealth;
+
     private Vector3 verticalVelocity;
     private Vector3 dashDirection;
 
@@ -41,6 +43,7 @@ public class MechaMovement : NetworkBehaviour
     private void Awake()
     {
         controller = GetComponent<CharacterController>();
+        mechaHealth = GetComponent<MechaHealth>();
 
         if (animator == null)
             animator = GetComponentInChildren<Animator>();
@@ -62,10 +65,30 @@ public class MechaMovement : NetworkBehaviour
 
         enabled = true;
 
+        if (controller == null)
+            controller = GetComponent<CharacterController>();
+
+        if (mechaHealth == null)
+            mechaHealth = GetComponent<MechaHealth>();
+
         if (hudController == null)
             hudController = FindFirstObjectByType<HUDController>();
 
+        verticalVelocity = Vector3.zero;
+        isDashing = false;
+        movementLocked = false;
+
         Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        if (IsOwner)
+        {
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+        }
     }
 
     public void SetMovementLocked(bool locked)
@@ -82,14 +105,44 @@ public class MechaMovement : NetworkBehaviour
 
     private void Update()
     {
-        if (!IsOwner || Keyboard.current == null)
+        if (!IsSpawned || !IsOwner)
             return;
+
+        if (controller == null)
+            controller = GetComponent<CharacterController>();
+
+        if (controller == null)
+            return;
+
+        // A morte bloqueia todos os comandos de movimento.
+        if (mechaHealth != null && mechaHealth.IsDead)
+        {
+            StopMovement();
+            UpdateAnimations();
+            return;
+        }
+
+        // Nunca chama Move enquanto o CharacterController estiver inativo.
+        if (!CanMove())
+        {
+            StopMovement();
+            UpdateAnimations();
+            return;
+        }
 
         if (movementLocked)
         {
             isDashing = false;
             dashTimer = 0f;
+            dashDirection = Vector3.zero;
 
+            ApplyGravity();
+            UpdateAnimations();
+            return;
+        }
+
+        if (Keyboard.current == null)
+        {
             ApplyGravity();
             UpdateAnimations();
             return;
@@ -101,8 +154,27 @@ public class MechaMovement : NetworkBehaviour
         UpdateAnimations();
     }
 
+    private bool CanMove()
+    {
+        return controller != null &&
+               controller.enabled &&
+               controller.gameObject.activeInHierarchy &&
+               isActiveAndEnabled;
+    }
+
+    private void StopMovement()
+    {
+        verticalVelocity = Vector3.zero;
+        isDashing = false;
+        dashTimer = 0f;
+        dashDirection = Vector3.zero;
+    }
+
     private void HandleMovement()
     {
+        if (!CanMove())
+            return;
+
         Vector2 input = Vector2.zero;
 
         if (Keyboard.current.wKey.isPressed) input.y += 1f;
@@ -127,8 +199,10 @@ public class MechaMovement : NetworkBehaviour
 
         if (isDashing)
         {
-            controller.Move(
-                dashDirection * dashSpeed * Time.deltaTime);
+            if (!CanMove())
+                return;
+
+            controller.Move(dashDirection * dashSpeed * Time.deltaTime);
 
             dashTimer -= Time.deltaTime;
 
@@ -137,6 +211,9 @@ public class MechaMovement : NetworkBehaviour
 
             return;
         }
+
+        if (!CanMove())
+            return;
 
         controller.Move(direction * moveSpeed * Time.deltaTime);
 
@@ -148,12 +225,15 @@ public class MechaMovement : NetworkBehaviour
             transform.rotation = Quaternion.Slerp(
                 transform.rotation,
                 targetRotation,
-                rotationSpeed * Time.deltaTime);
+                1f - Mathf.Exp(-rotationSpeed * Time.deltaTime));
         }
     }
 
     private void HandleDash()
     {
+        if (!CanMove() || Keyboard.current == null)
+            return;
+
         if (!Keyboard.current.leftShiftKey.wasPressedThisFrame)
             return;
 
@@ -191,8 +271,7 @@ public class MechaMovement : NetworkBehaviour
 
     private void ApplyGravity()
     {
-        if (controller == null || !controller.enabled ||
-            !controller.gameObject.activeInHierarchy)
+        if (!CanMove())
             return;
 
         if (controller.isGrounded && verticalVelocity.y < 0f)
@@ -200,7 +279,9 @@ public class MechaMovement : NetworkBehaviour
 
         verticalVelocity.y += gravity * Time.deltaTime;
 
-        controller.Move(verticalVelocity * Time.deltaTime);
+        // Verificação imediatamente antes de Move.
+        if (CanMove())
+            controller.Move(verticalVelocity * Time.deltaTime);
     }
 
     private void UpdateAnimations()
@@ -210,7 +291,10 @@ public class MechaMovement : NetworkBehaviour
 
         Vector2 input = Vector2.zero;
 
-        if (!movementLocked && Keyboard.current != null)
+        if (!movementLocked &&
+            (mechaHealth == null || !mechaHealth.IsDead) &&
+            Keyboard.current != null &&
+            CanMove())
         {
             if (Keyboard.current.wKey.isPressed) input.y += 1f;
             if (Keyboard.current.sKey.isPressed) input.y -= 1f;
@@ -225,6 +309,9 @@ public class MechaMovement : NetworkBehaviour
     private void OnDisable()
     {
         if (IsOwner)
+        {
             Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+        }
     }
 }
