@@ -1,0 +1,11 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/UI%20Tools/USSmenu.uss?fileID=7433441132597879392&amp;guid=2292c6ae1164daa43b6dc877ba445f4a&amp;type=3#USSmenu"/>
+    <ui:VisualElement name="Root" style="position: absolute; width: 1920px; height: 1080px;">
+        <ui:Label name="Title" text="MECHA COLOSSEUM"/>
+        <ui:VisualElement name="MenuButtons">
+            <ui:Button name="PlayButton" text="JOGAR"/>
+            <ui:Button name="SettingsButton" text="CONFIGURAÇÕES"/>
+            <ui:Button name="QuitButton" text="SAIR"/>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
