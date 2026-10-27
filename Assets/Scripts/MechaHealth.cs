@@ -15,6 +15,8 @@ public class MechaHealth : NetworkBehaviour
             NetworkVariableWritePermission.Server
         );
 
+    private bool deathHandled;
+
     public float CurrentHealth => currentHealth.Value;
     public float MaxHealth => maxHealth;
     public bool IsDead => currentHealth.Value <= 0f;
@@ -24,15 +26,12 @@ public class MechaHealth : NetworkBehaviour
 
     public override void OnNetworkSpawn()
     {
+        currentHealth.OnValueChanged += OnHealthChanged;
+
         if (IsServer)
             currentHealth.Value = maxHealth;
 
-        currentHealth.OnValueChanged += OnHealthChanged;
-
         HealthChanged?.Invoke(CurrentHealth, MaxHealth);
-
-        if (IsDead)
-            Death?.Invoke();
     }
 
     public override void OnNetworkDespawn()
@@ -42,7 +41,7 @@ public class MechaHealth : NetworkBehaviour
 
     public void TakeDamageServer(float damage)
     {
-        if (!IsServer || IsDead || damage <= 0f)
+        if (!IsServer || IsDead || damage <= 0f || deathHandled)
             return;
 
         currentHealth.Value = Mathf.Max(
@@ -52,12 +51,12 @@ public class MechaHealth : NetworkBehaviour
 
         Debug.Log(
             "[MECHA] " + name +
-            " | Vida: " + currentHealth.Value +
-            "/" + maxHealth
+            " | Vida: " + CurrentHealth +
+            "/" + MaxHealth
         );
 
         if (IsDead)
-            OnDeath();
+            HandleDeathServer();
     }
 
     public void HealServer(float amount)
@@ -73,21 +72,75 @@ public class MechaHealth : NetworkBehaviour
 
     private void OnHealthChanged(float previous, float current)
     {
+        HealthChanged?.Invoke(current, maxHealth);
+
         Debug.Log(
             "[MECHA] " + name +
             " | Vida atualizada: " + current
         );
 
-        HealthChanged?.Invoke(current, maxHealth);
-
         if (previous > 0f && current <= 0f)
             Death?.Invoke();
     }
 
-    private void OnDeath()
+    private void HandleDeathServer()
     {
+        if (!IsServer || deathHandled)
+            return;
+
+        deathHandled = true;
+
         Debug.Log("[MECHA] " + name + " foi derrotado.");
 
-        // Adicione aqui a logica de morte ou respawn.
+        if (CompareTag("Enemy"))
+        {
+            Debug.Log("[MECHA] Inimigo destruído: " + name);
+
+            if (NetworkObject != null && NetworkObject.IsSpawned)
+                NetworkObject.Despawn(true);
+
+            return;
+        }
+
+        if (CompareTag("Player"))
+        {
+            Debug.Log("[MECHA] Jogador derrotado: " + name);
+
+            ShowRespawnScreenClientRpc(
+                new ClientRpcParams
+                {
+                    Send = new ClientRpcSendParams
+                    {
+                        TargetClientIds = new ulong[] { OwnerClientId }
+                    }
+                }
+            );
+
+            return;
+        }
+
+        Debug.LogWarning(
+            "[MECHA] " + name +
+            " morreu, mas sua tag não é Enemy nem Player."
+        );
+    }
+
+    [ClientRpc]
+    private void ShowRespawnScreenClientRpc(
+        ClientRpcParams clientRpcParams = default)
+    {
+        RespawnScreen screen =
+            FindFirstObjectByType<RespawnScreen>();
+
+        if (screen != null)
+        {
+            screen.Show();
+        }
+        else
+        {
+            Debug.LogWarning(
+                "[MECHA] RespawnScreen não encontrado na cena."
+            );
+        }
     }
 }
