@@ -36,22 +36,19 @@ public class MechaCameraLook : MonoBehaviour
             isLocalPlayer = true;
         }
 
-        Vector3 angles = transform.eulerAngles;
+        if (mechaBody == null && transform.parent != null)
+            mechaBody = transform.parent;
 
-        yaw = angles.y;
-        pitch = angles.x;
+        yaw = mechaBody != null
+            ? mechaBody.eulerAngles.y
+            : transform.eulerAngles.y;
+
+        pitch = transform.localEulerAngles.x;
 
         if (pitch > 180f)
             pitch -= 360f;
 
-        pitch = Mathf.Clamp(
-            pitch,
-            minVerticalAngle,
-            maxVerticalAngle
-        );
-
-        if (mechaBody == null && transform.parent != null)
-            mechaBody = transform.parent;
+        pitch = Mathf.Clamp(pitch, minVerticalAngle, maxVerticalAngle);
     }
 
     private void Start()
@@ -88,11 +85,20 @@ public class MechaCameraLook : MonoBehaviour
             minVerticalAngle,
             maxVerticalAngle
         );
+    }
 
-        transform.rotation = Quaternion.Euler(pitch, yaw, 0f);
+    private void LateUpdate()
+    {
+        if (!isLocalPlayer || respawnScreenOpen)
+            return;
+
+        if (mechaHealth != null && mechaHealth.IsDead)
+            return;
 
         if (mechaBody != null)
             mechaBody.rotation = Quaternion.Euler(0f, yaw, 0f);
+
+        transform.rotation = Quaternion.Euler(pitch, yaw, 0f);
     }
 
     private void UpdateLocalPlayerStatus()
@@ -133,6 +139,5 @@ public class MechaCameraLook : MonoBehaviour
 
     private void OnDisable()
     {
-        // Não altera o cursor ao desativar este componente.
     }
 }
