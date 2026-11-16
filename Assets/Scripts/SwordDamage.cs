@@ -4,44 +4,74 @@ using Unity.Netcode;
 using UnityEngine;
 
 [RequireComponent(typeof(Collider))]
-public class SwordDamage : NetworkBehaviour
+public class SwordDamage : MonoBehaviour
 {
     [Header("Dano")]
     [SerializeField] private float damage = 25f;
-    [SerializeField] private float hitCooldown = 0.5f;
 
-    [Header("Configuração")]
-    [SerializeField] private bool damageOnlyWhileAttacking = true;
+    private Collider attackCollider;
+    private Crystal crystal;
 
-    private Collider swordCollider;
     private bool isAttacking;
 
-    private readonly Dictionary<ulong, float> lastHitTimes =
-        new Dictionary<ulong, float>();
+    private readonly HashSet<ulong> hitTargets =
+        new HashSet<ulong>();
 
     private void Awake()
     {
-        swordCollider = GetComponent<Collider>();
-        swordCollider.isTrigger = true;
+        attackCollider = GetComponent<Collider>();
+        crystal = GetComponentInParent<Crystal>();
+
+        attackCollider.isTrigger = true;
+
+        DisableAttack();
     }
 
-    public override void OnNetworkSpawn()
+    private void OnEnable()
     {
-        if (swordCollider != null)
-            swordCollider.enabled = false;
-    }
+        if (attackCollider == null)
+            attackCollider = GetComponent<Collider>();
 
-    public override void OnNetworkDespawn()
-    {
-        lastHitTimes.Clear();
+        DisableAttack();
     }
 
     public void SetAttacking(bool attacking)
     {
-        isAttacking = attacking;
+        if (NetworkManager.Singleton == null ||
+            !NetworkManager.Singleton.IsServer)
+        {
+            DisableAttack();
+            return;
+        }
 
-        if (swordCollider != null)
-            swordCollider.enabled = attacking;
+        if (attacking)
+        {
+            // Não permite atacar sem possuir a espada.
+            if (crystal == null || !crystal.IsHeld)
+            {
+                DisableAttack();
+                return;
+            }
+
+            isAttacking = true;
+            hitTargets.Clear();
+
+            attackCollider.enabled = true;
+
+            Debug.Log("[SWORD DAMAGE] Ataque autorizado.");
+        }
+        else
+        {
+            DisableAttack();
+        }
+    }
+
+    public void DisableAttack()
+    {
+        isAttacking = false;
+
+        if (attackCollider != null)
+            attackCollider.enabled = false;
     }
 
     private void OnTriggerEnter(Collider other)
@@ -56,13 +86,24 @@ public class SwordDamage : NetworkBehaviour
 
     private void TryDamage(Collider other)
     {
-        if (!IsSpawned || !IsServer)
+        // Bloqueio absoluto fora da janela de ataque.
+        if (!isAttacking)
             return;
 
-        if (damageOnlyWhileAttacking && !isAttacking)
+        if (attackCollider == null || !attackCollider.enabled)
             return;
 
-        if (damage <= 0f)
+        if (NetworkManager.Singleton == null ||
+            !NetworkManager.Singleton.IsServer)
+            return;
+
+        if (crystal == null || !crystal.IsHeld)
+        {
+            DisableAttack();
+            return;
+        }
+
+        if (other == null)
             return;
 
         MechaHealth health =
@@ -71,27 +112,35 @@ public class SwordDamage : NetworkBehaviour
         if (health == null || health.IsDead)
             return;
 
-        if (health.NetworkObject == NetworkObject)
-            return;
-
-        ulong targetId = health.NetworkObjectId;
-
-        if (lastHitTimes.TryGetValue(targetId, out float lastHit))
+        // Impede dano ao próprio jogador.
+        if (NetworkManager.Singleton.ConnectedClients.TryGetValue(
+            crystal.HolderClientId,
+            out NetworkClient holderClient))
         {
-            if (Time.time - lastHit < hitCooldown)
+            if (holderClient.PlayerObject != null &&
+                health.NetworkObjectId ==
+                holderClient.PlayerObject.NetworkObjectId)
                 return;
         }
 
-        lastHitTimes[targetId] = Time.time;
+        ulong targetId = health.NetworkObjectId;
+
+        // Cada inimigo só recebe dano uma vez por golpe.
+        if (hitTargets.Contains(targetId))
+            return;
+
+        hitTargets.Add(targetId);
 
         health.TakeDamageServer(damage);
 
         Debug.Log(
-            "[ESPADA] " + health.name +
-            " recebeu " + damage +
-            " de dano. Vida restante: " +
-            health.CurrentHealth + "/" +
-            health.MaxHealth
+            "[SWORD DAMAGE] ACERTOU " +
+            health.name + " | Dano: " + damage
         );
+    }
+
+    private void OnDisable()
+    {
+        DisableAttack();
     }
 }

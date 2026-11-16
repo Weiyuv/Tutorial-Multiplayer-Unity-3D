@@ -27,6 +27,7 @@ public class MechaMovement : NetworkBehaviour
 
     private Vector3 verticalVelocity;
     private Vector3 dashDirection;
+    private Vector3 currentMoveDirection;
 
     private float dashTimer;
     private float nextDashTime;
@@ -37,6 +38,7 @@ public class MechaMovement : NetworkBehaviour
     public bool IsMovementLocked => movementLocked;
     public bool IsDashing => isDashing;
     public float DashCooldown => dashCooldown;
+
     public float DashCooldownRemaining =>
         Mathf.Max(0f, nextDashTime - Time.time);
 
@@ -75,6 +77,7 @@ public class MechaMovement : NetworkBehaviour
             hudController = FindFirstObjectByType<HUDController>();
 
         verticalVelocity = Vector3.zero;
+        currentMoveDirection = Vector3.zero;
         isDashing = false;
         movementLocked = false;
 
@@ -100,6 +103,7 @@ public class MechaMovement : NetworkBehaviour
             isDashing = false;
             dashTimer = 0f;
             dashDirection = Vector3.zero;
+            currentMoveDirection = Vector3.zero;
         }
     }
 
@@ -114,7 +118,6 @@ public class MechaMovement : NetworkBehaviour
         if (controller == null)
             return;
 
-        // A morte bloqueia todos os comandos de movimento.
         if (mechaHealth != null && mechaHealth.IsDead)
         {
             StopMovement();
@@ -122,7 +125,6 @@ public class MechaMovement : NetworkBehaviour
             return;
         }
 
-        // Nunca chama Move enquanto o CharacterController estiver inativo.
         if (!CanMove())
         {
             StopMovement();
@@ -135,6 +137,7 @@ public class MechaMovement : NetworkBehaviour
             isDashing = false;
             dashTimer = 0f;
             dashDirection = Vector3.zero;
+            currentMoveDirection = Vector3.zero;
 
             ApplyGravity();
             UpdateAnimations();
@@ -168,19 +171,24 @@ public class MechaMovement : NetworkBehaviour
         isDashing = false;
         dashTimer = 0f;
         dashDirection = Vector3.zero;
+        currentMoveDirection = Vector3.zero;
     }
 
-    private void HandleMovement()
+    private Vector3 GetInputDirection()
     {
-        if (!CanMove())
-            return;
-
         Vector2 input = Vector2.zero;
 
-        if (Keyboard.current.wKey.isPressed) input.y += 1f;
-        if (Keyboard.current.sKey.isPressed) input.y -= 1f;
-        if (Keyboard.current.dKey.isPressed) input.x += 1f;
-        if (Keyboard.current.aKey.isPressed) input.x -= 1f;
+        if (Keyboard.current.wKey.isPressed)
+            input.y += 1f;
+
+        if (Keyboard.current.sKey.isPressed)
+            input.y -= 1f;
+
+        if (Keyboard.current.dKey.isPressed)
+            input.x += 1f;
+
+        if (Keyboard.current.aKey.isPressed)
+            input.x -= 1f;
 
         input = Vector2.ClampMagnitude(input, 1f);
 
@@ -189,20 +197,28 @@ public class MechaMovement : NetworkBehaviour
             : transform;
 
         Vector3 forward = Vector3.ProjectOnPlane(
-            cam.forward, Vector3.up).normalized;
+            cam.forward,
+            Vector3.up
+        ).normalized;
 
         Vector3 right = Vector3.ProjectOnPlane(
-            cam.right, Vector3.up).normalized;
+            cam.right,
+            Vector3.up
+        ).normalized;
 
-        Vector3 direction =
-            (forward * input.y + right * input.x).normalized;
+        return (forward * input.y + right * input.x).normalized;
+    }
+
+    private void HandleMovement()
+    {
+        if (!CanMove())
+            return;
 
         if (isDashing)
         {
-            if (!CanMove())
-                return;
-
-            controller.Move(dashDirection * dashSpeed * Time.deltaTime);
+            controller.Move(
+                dashDirection * dashSpeed * Time.deltaTime
+            );
 
             dashTimer -= Time.deltaTime;
 
@@ -212,21 +228,32 @@ public class MechaMovement : NetworkBehaviour
             return;
         }
 
-        if (!CanMove())
+        currentMoveDirection = GetInputDirection();
+
+        if (currentMoveDirection.sqrMagnitude > 0.001f)
+        {
+            RotateTowards(currentMoveDirection);
+        }
+
+        controller.Move(
+            currentMoveDirection * moveSpeed * Time.deltaTime
+        );
+    }
+
+    private void RotateTowards(Vector3 direction)
+    {
+        direction.y = 0f;
+
+        if (direction.sqrMagnitude < 0.001f)
             return;
 
-        controller.Move(direction * moveSpeed * Time.deltaTime);
+        Quaternion targetRotation = Quaternion.LookRotation(direction);
 
-        if (direction.sqrMagnitude > 0.01f)
-        {
-            Quaternion targetRotation =
-                Quaternion.LookRotation(direction);
-
-            transform.rotation = Quaternion.Slerp(
-                transform.rotation,
-                targetRotation,
-                1f - Mathf.Exp(-rotationSpeed * Time.deltaTime));
-        }
+        transform.rotation = Quaternion.Slerp(
+            transform.rotation,
+            targetRotation,
+            1f - Mathf.Exp(-rotationSpeed * Time.deltaTime)
+        );
     }
 
     private void HandleDash()
@@ -240,24 +267,15 @@ public class MechaMovement : NetworkBehaviour
         if (Time.time < nextDashTime || isDashing)
             return;
 
-        Vector3 direction = Vector3.zero;
+        Vector3 direction = GetInputDirection();
 
-        if (Keyboard.current.wKey.isPressed)
-            direction += transform.forward;
-
-        if (Keyboard.current.sKey.isPressed)
-            direction -= transform.forward;
-
-        if (Keyboard.current.dKey.isPressed)
-            direction += transform.right;
-
-        if (Keyboard.current.aKey.isPressed)
-            direction -= transform.right;
-
-        if (direction.sqrMagnitude < 0.01f)
+        if (direction.sqrMagnitude < 0.001f)
             direction = transform.forward;
 
         dashDirection = direction.normalized;
+
+        RotateTowards(dashDirection);
+
         isDashing = true;
         dashTimer = dashDuration;
         nextDashTime = Time.time + dashCooldown;
@@ -279,9 +297,12 @@ public class MechaMovement : NetworkBehaviour
 
         verticalVelocity.y += gravity * Time.deltaTime;
 
-        // Verificação imediatamente antes de Move.
         if (CanMove())
-            controller.Move(verticalVelocity * Time.deltaTime);
+        {
+            controller.Move(
+                verticalVelocity * Time.deltaTime
+            );
+        }
     }
 
     private void UpdateAnimations()
@@ -296,10 +317,17 @@ public class MechaMovement : NetworkBehaviour
             Keyboard.current != null &&
             CanMove())
         {
-            if (Keyboard.current.wKey.isPressed) input.y += 1f;
-            if (Keyboard.current.sKey.isPressed) input.y -= 1f;
-            if (Keyboard.current.dKey.isPressed) input.x += 1f;
-            if (Keyboard.current.aKey.isPressed) input.x -= 1f;
+            if (Keyboard.current.wKey.isPressed)
+                input.y += 1f;
+
+            if (Keyboard.current.sKey.isPressed)
+                input.y -= 1f;
+
+            if (Keyboard.current.dKey.isPressed)
+                input.x += 1f;
+
+            if (Keyboard.current.aKey.isPressed)
+                input.x -= 1f;
         }
 
         animator.SetFloat("Speed", input.magnitude);

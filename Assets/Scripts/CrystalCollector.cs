@@ -1,3 +1,4 @@
+
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -30,7 +31,7 @@ public class CrystalCollector : NetworkBehaviour
 
         if (heldCrystal != null && heldCrystal.IsHeld)
         {
-            Debug.Log("[COLLECTOR] Você já está segurando uma bola.");
+            Debug.Log("[COLLECTOR] Você já está segurando uma espada.");
             return;
         }
 
@@ -45,13 +46,13 @@ public class CrystalCollector : NetworkBehaviour
 
         if (crystal == null)
         {
-            Debug.LogWarning("[COLLECTOR] Nenhuma bola próxima encontrada.");
+            Debug.LogWarning("[COLLECTOR] Nenhuma espada próxima encontrada.");
             return;
         }
 
         if (!crystal.IsSpawned)
         {
-            Debug.LogWarning("[COLLECTOR] Bola não spawnada na rede.");
+            Debug.LogWarning("[COLLECTOR] Espada não spawnada na rede.");
             return;
         }
 
@@ -129,10 +130,11 @@ public class CrystalCollector : NetworkBehaviour
         }
 
         if (!NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(
-            crystalId, out NetworkObject crystalObject))
+            crystalId,
+            out NetworkObject crystalObject))
         {
             Debug.LogWarning(
-                "[COLLECTOR] RECUSA: BOLA NÃO ENCONTRADA."
+                "[COLLECTOR] RECUSA: ESPADA NÃO ENCONTRADA."
             );
 
             PickupResultClientRpc(false, clientId);
@@ -151,39 +153,23 @@ public class CrystalCollector : NetworkBehaviour
             return;
         }
 
-        if (crystal.IsHeld)
+        bool success = crystal.PickupServer(
+            clientId,
+            playerNetworkObject,
+            collectDistance
+        );
+
+        if (!success)
         {
             Debug.LogWarning(
-                "[COLLECTOR] RECUSA: BOLA JÁ COLETADA."
+                "[COLLECTOR] RECUSA: CRYSTAL NÃO ACEITOU A COLETA."
             );
 
             PickupResultClientRpc(false, clientId);
             return;
         }
 
-        float distance = Vector3.Distance(
-            transform.position,
-            crystal.transform.position
-        );
-
-        Debug.Log(
-            "[COLLECTOR] Distância no servidor: " +
-            distance.ToString("F2")
-        );
-
-        if (distance > collectDistance)
-        {
-            Debug.LogWarning(
-                "[COLLECTOR] RECUSA: DISTÂNCIA EXCEDIDA."
-            );
-
-            PickupResultClientRpc(false, clientId);
-            return;
-        }
-
-        crystal.PickupServer(clientId);
-
-        Debug.Log("[COLLECTOR] Coleta solicitada com sucesso.");
+        Debug.Log("[COLLECTOR] Servidor confirmou a coleta.");
 
         PickupResultClientRpc(true, clientId);
     }
@@ -208,43 +194,24 @@ public class CrystalCollector : NetworkBehaviour
             return;
         }
 
-        Debug.Log("[COLLECTOR] Pedido de coleta aceito.");
-
-        if (heldCrystal == null)
-        {
-            Crystal[] crystals =
-                FindObjectsByType<Crystal>(FindObjectsSortMode.None);
-
-            foreach (Crystal crystal in crystals)
-            {
-                if (crystal != null &&
-                    crystal.IsSpawned &&
-                    crystal.IsHeld)
-                {
-                    heldCrystal = crystal;
-                    break;
-                }
-            }
-        }
-
-        if (heldCrystal == null)
-        {
-            Debug.LogWarning(
-                "[COLLECTOR] Aguardando confirmação da bola."
-            );
-        }
+        Debug.Log("[COLLECTOR] Coleta confirmada pelo servidor.");
     }
 
     public void SetHeldCrystal(Crystal crystal)
     {
         heldCrystal = crystal;
         pickupPending = false;
+
+        Debug.Log("[COLLECTOR] Espada equipada no jogador.");
     }
 
     public void ClearHeldCrystal(Crystal crystal)
     {
         if (heldCrystal == crystal)
+        {
             heldCrystal = null;
+            pickupPending = false;
+        }
     }
 
     public Transform GetHoldPoint()
