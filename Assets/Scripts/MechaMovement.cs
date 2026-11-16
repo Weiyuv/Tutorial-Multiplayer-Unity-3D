@@ -27,7 +27,6 @@ public class MechaMovement : NetworkBehaviour
 
     private Vector3 verticalVelocity;
     private Vector3 dashDirection;
-    private Vector3 currentMoveDirection;
 
     private float dashTimer;
     private float nextDashTime;
@@ -77,7 +76,6 @@ public class MechaMovement : NetworkBehaviour
             hudController = FindFirstObjectByType<HUDController>();
 
         verticalVelocity = Vector3.zero;
-        currentMoveDirection = Vector3.zero;
         isDashing = false;
         movementLocked = false;
 
@@ -103,7 +101,6 @@ public class MechaMovement : NetworkBehaviour
             isDashing = false;
             dashTimer = 0f;
             dashDirection = Vector3.zero;
-            currentMoveDirection = Vector3.zero;
         }
     }
 
@@ -137,7 +134,6 @@ public class MechaMovement : NetworkBehaviour
             isDashing = false;
             dashTimer = 0f;
             dashDirection = Vector3.zero;
-            currentMoveDirection = Vector3.zero;
 
             ApplyGravity();
             UpdateAnimations();
@@ -171,10 +167,9 @@ public class MechaMovement : NetworkBehaviour
         isDashing = false;
         dashTimer = 0f;
         dashDirection = Vector3.zero;
-        currentMoveDirection = Vector3.zero;
     }
 
-    private Vector3 GetInputDirection()
+    private Vector3 GetCameraRelativeDirection()
     {
         Vector2 input = Vector2.zero;
 
@@ -228,32 +223,22 @@ public class MechaMovement : NetworkBehaviour
             return;
         }
 
-        currentMoveDirection = GetInputDirection();
+        // Calcula a direção usando a câmera, sem depender da rotação do corpo.
+        Vector3 direction = GetCameraRelativeDirection();
 
-        if (currentMoveDirection.sqrMagnitude > 0.001f)
+        if (direction.sqrMagnitude > 0.01f)
         {
-            RotateTowards(currentMoveDirection);
+            Quaternion targetRotation =
+                Quaternion.LookRotation(direction, Vector3.up);
+
+            transform.rotation = Quaternion.Slerp(
+                transform.rotation,
+                targetRotation,
+                1f - Mathf.Exp(-rotationSpeed * Time.deltaTime)
+            );
         }
 
-        controller.Move(
-            currentMoveDirection * moveSpeed * Time.deltaTime
-        );
-    }
-
-    private void RotateTowards(Vector3 direction)
-    {
-        direction.y = 0f;
-
-        if (direction.sqrMagnitude < 0.001f)
-            return;
-
-        Quaternion targetRotation = Quaternion.LookRotation(direction);
-
-        transform.rotation = Quaternion.Slerp(
-            transform.rotation,
-            targetRotation,
-            1f - Mathf.Exp(-rotationSpeed * Time.deltaTime)
-        );
+        controller.Move(direction * moveSpeed * Time.deltaTime);
     }
 
     private void HandleDash()
@@ -267,15 +252,12 @@ public class MechaMovement : NetworkBehaviour
         if (Time.time < nextDashTime || isDashing)
             return;
 
-        Vector3 direction = GetInputDirection();
+        Vector3 direction = GetCameraRelativeDirection();
 
-        if (direction.sqrMagnitude < 0.001f)
+        if (direction.sqrMagnitude < 0.01f)
             direction = transform.forward;
 
         dashDirection = direction.normalized;
-
-        RotateTowards(dashDirection);
-
         isDashing = true;
         dashTimer = dashDuration;
         nextDashTime = Time.time + dashCooldown;
@@ -298,11 +280,7 @@ public class MechaMovement : NetworkBehaviour
         verticalVelocity.y += gravity * Time.deltaTime;
 
         if (CanMove())
-        {
-            controller.Move(
-                verticalVelocity * Time.deltaTime
-            );
-        }
+            controller.Move(verticalVelocity * Time.deltaTime);
     }
 
     private void UpdateAnimations()
