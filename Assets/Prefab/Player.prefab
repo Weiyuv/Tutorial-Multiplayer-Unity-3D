@@ -191,14 +191,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 563596187
+  GlobalObjectIdHash: 1458868484
   InScenePlacedSourceGlobalObjectIdHash: 1458868484
   m_InScenePlacedDisabledByDefault: 0
   DeferredDespawnTick: 0
   Ownership: 1
   AlwaysReplicateAsRoot: 0
   SynchronizeTransform: 1
-  m_InScenePlaced: 1
+  m_InScenePlaced: 0
   ActiveSceneSynchronization: 0
   SceneMigrationSynchronization: 0
   SpawnWithObservers: 1
@@ -358,9 +358,9 @@ MonoBehaviour:
   animator: {fileID: 5313281551856193234}
   networkAnimator: {fileID: 1779571105827891711}
   attackTrigger: Attack
-  attackCooldown: 0.7
-  hitDelay: 0.25
-  hitboxActiveTime: 0.5
+  attackCooldown: 1
+  hitDelay: 0.5
+  hitboxActiveTime: 0.3
 --- !u!114 &1779571105827891711
 MonoBehaviour:
   m_ObjectHideFlags: 0
