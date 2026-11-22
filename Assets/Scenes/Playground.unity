@@ -1718,7 +1718,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Unity.Cinemachine::Unity.Cinemachine.CinemachineRotationComposer
   Composition:
-    ScreenPosition: {x: 0, y: 0}
+    ScreenPosition: {x: 0, y: 0.4}
     DeadZone:
       Enabled: 0
       Size: {x: 0.2, y: 0.2}
@@ -1838,7 +1838,7 @@ MonoBehaviour:
   VerticalAxis:
     Value: 15
     Center: 15
-    Range: {x: -5, y: 45}
+    Range: {x: 1, y: 150}
     Wrap: 0
     Recentering:
       Enabled: 0
@@ -2155,7 +2155,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1028693015
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2234,7 +2234,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
   GlobalObjectIdHash: 1239045210
   InScenePlacedSourceGlobalObjectIdHash: 0
-  m_InScenePlacedDisabledByDefault: 0
+  m_InScenePlacedDisabledByDefault: 1
   DeferredDespawnTick: 0
   Ownership: 1
   AlwaysReplicateAsRoot: 0
@@ -2407,7 +2407,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &1184348910
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3515,7 +3515,7 @@ MonoBehaviour:
   NetworkConfig:
     ProtocolVersion: 0
     NetworkTransport: {fileID: 1752794723}
-    PlayerPrefab: {fileID: 5954147259151754054, guid: aa8d0d526bd91a444bf0d9dc769ac3d9, type: 3}
+    PlayerPrefab: {fileID: 7951751748426788146, guid: aacda6d44b7bfff4fa2b80056751e7ce, type: 3}
     Prefabs:
       NetworkPrefabsLists:
       - {fileID: 0}
@@ -3891,7 +3891,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &1930217606
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3936,7 +3936,7 @@ Transform:
   m_GameObject: {fileID: 1930217605}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -14.97209, y: 1.42741, z: -4.48767}
+  m_LocalPosition: {x: -8.56, y: 1.42741, z: 7.34}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
