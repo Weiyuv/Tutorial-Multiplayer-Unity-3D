@@ -2155,7 +2155,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &1028693015
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2169,10 +2169,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RoundManager
   ShowTopMostFoldoutHeaderGroup: 1
-  botPrefab: {fileID: 3912927885191237066, guid: a44b4bc1423fcde49b6f71e458d12516, type: 3}
+  botPrefab: {fileID: 7356512723452650216, guid: b43810d44b46b724b9b44a17448beb45, type: 3}
   spawnPoints:
   - {fileID: 1406229669}
-  spawnInterval: 0.8
+  spawnInterval: 0.4
   spawnRadius: 2
   navMeshSampleDistance: 5
   armedChance: 0.65
@@ -2234,7 +2234,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
   GlobalObjectIdHash: 1239045210
   InScenePlacedSourceGlobalObjectIdHash: 0
-  m_InScenePlacedDisabledByDefault: 1
+  m_InScenePlacedDisabledByDefault: 0
   DeferredDespawnTick: 0
   Ownership: 1
   AlwaysReplicateAsRoot: 0
@@ -3515,7 +3515,7 @@ MonoBehaviour:
   NetworkConfig:
     ProtocolVersion: 0
     NetworkTransport: {fileID: 1752794723}
-    PlayerPrefab: {fileID: 7951751748426788146, guid: aacda6d44b7bfff4fa2b80056751e7ce, type: 3}
+    PlayerPrefab: {fileID: 1750940484969426073, guid: 8fe40c61cd7e97c469b0f7e60b512b4b, type: 3}
     Prefabs:
       NetworkPrefabsLists:
       - {fileID: 0}

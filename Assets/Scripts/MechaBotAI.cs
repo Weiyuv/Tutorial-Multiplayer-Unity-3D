@@ -9,48 +9,94 @@ using UnityEngine.AI;
 [RequireComponent(typeof(NavMeshAgent))]
 public class MechaBotAI : NetworkBehaviour
 {
-    [Header("Referências")]
+    [Header("Referencias")]
     [SerializeField] private NavMeshAgent agent;
     [SerializeField] private Animator animator;
     [SerializeField] private NetworkAnimator networkAnimator;
-    [SerializeField] private SwordDamage swordDamage;
-    [SerializeField] private GameObject swordVisual;
+
+    [Header("Animacao Strafe")]
+    [SerializeField] private string speedParameter = "Speed";
+    [SerializeField] private string strafeXParameter = "MoveX";
+    [SerializeField] private string strafeYParameter = "MoveY";
+    [SerializeField] private float animationDampTime = 0.1f;
 
     [Header("Combate")]
-    [SerializeField] private float attackRange = 2.2f;
-    [SerializeField] private float attackDuration = 0.4f;
+    [SerializeField] private float attackRange = 2.5f;
+    [SerializeField] private float attackDamage = 25f;
+    [SerializeField] private float attackCooldown = 1.5f;
+    [SerializeField] private float attackStartDelay = 0.2f;
+    [SerializeField] private float attackRecovery = 0.3f;
     [SerializeField] private float rotationSpeed = 12f;
+    [SerializeField] private float attackAngle = 70f;
+    [SerializeField] private int maxSimultaneousAttackers = 1;
 
-    [Header("Alvo")]
-    [SerializeField] private float targetUpdateInterval = 0.5f;
+    [Header("Perseguicao")]
+    [SerializeField] private float targetUpdateInterval = 0.3f;
+    [SerializeField] private float predictionTime = 0.5f;
+    [SerializeField] private float stoppingDistance = 2f;
+    [SerializeField] private float loseTargetDistance = 35f;
 
-    public NetworkVariable<bool> HasSword = new NetworkVariable<bool>(
-        false,
-        NetworkVariableReadPermission.Everyone,
-        NetworkVariableWritePermission.Server
-    );
+    [Header("Taticas de Flanqueamento")]
+    [SerializeField] private float flankDistance = 4.5f;
+    [SerializeField] private float flankUpdateInterval = 1.5f;
+    [SerializeField] private float preferredAngleWeight = 2f;
+    [SerializeField] private int flankPositionSamples = 12;
+
+    [Header("Separacao entre Bots")]
+    [SerializeField] private float separationRadius = 3.5f;
+    [SerializeField] private float separationWeight = 2f;
+
+    [Header("Hit and Run")]
+    [SerializeField] private float retreatDistance = 4f;
+    [SerializeField] private float disengageDuration = 1.5f;
+    [SerializeField] private float retreatSpeed = 4.5f;
+
+    [Header("Velocidade")]
+    [SerializeField] private float combatMovementSpeed = 3f;
 
     private Transform currentTarget;
     private MechaHealth targetHealth;
 
-    private bool configured;
-    private bool armedConfiguration;
+    private Vector3 lastTargetPosition;
+    private Vector3 targetVelocity;
+
+    private MechaBotAI[] nearbyBots;
+
     private float configuredSpeed = 3.5f;
-    private float configuredCooldown = 1.1f;
+    private float configuredCooldown = 1.5f;
 
     private float nextTargetUpdate;
+    private float nextBotRefresh;
     private float nextAttackTime;
+    private float nextFlankUpdate;
+
+    private float disengageUntil;
+    private float preferredAngle;
+
+    private Vector3 flankDestination;
+
     private bool isAttacking;
+    private bool isDisengaging;
+
+    private Coroutine attackCoroutine;
+
+    private enum TacticalState
+    {
+        Pursuit,
+        Flanking,
+        Attacking,
+        Disengaging
+    }
+
+    private TacticalState currentState;
 
     public void ConfigureServer(
         bool armed,
         float movementSpeed,
-        float attackCooldown)
+        float cooldown)
     {
-        armedConfiguration = armed;
         configuredSpeed = movementSpeed;
-        configuredCooldown = attackCooldown;
-        configured = true;
+        configuredCooldown = cooldown;
     }
 
     private void Awake()
@@ -64,46 +110,31 @@ public class MechaBotAI : NetworkBehaviour
         if (networkAnimator == null)
             networkAnimator = GetComponentInChildren<NetworkAnimator>();
 
-        if (swordDamage == null)
-            swordDamage = GetComponentInChildren<SwordDamage>();
-
-        if (swordVisual == null && swordDamage != null)
-            swordVisual = swordDamage.gameObject;
-
         if (animator != null)
             animator.applyRootMotion = false;
     }
 
     public override void OnNetworkSpawn()
     {
-        HasSword.OnValueChanged += OnSwordChanged;
-
         if (IsServer)
         {
-            if (!configured)
-            {
-                armedConfiguration = swordVisual != null;
-            }
+            agent.enabled = true;
+            agent.speed = configuredSpeed;
+            agent.stoppingDistance = stoppingDistance;
+            agent.updateRotation = false;
+            agent.isStopped = false;
 
-            HasSword.Value = armedConfiguration;
+            preferredAngle = Random.Range(0f, 360f);
 
-            if (agent != null)
-            {
-                agent.enabled = true;
-                agent.speed = configuredSpeed;
-                agent.isStopped = false;
-                agent.updateRotation = false;
-            }
+            nextAttackTime = Time.time + Random.Range(0.5f, 2f);
+            nextFlankUpdate = Time.time + Random.Range(0f, 1f);
 
-            nextAttackTime = Time.time + 1f;
+            currentState = TacticalState.Pursuit;
         }
         else
         {
-            if (agent != null)
-                agent.enabled = false;
+            agent.enabled = false;
         }
-
-        ApplySwordState(HasSword.Value);
     }
 
     private void Update()
@@ -111,7 +142,7 @@ public class MechaBotAI : NetworkBehaviour
         if (!IsSpawned || !IsServer)
             return;
 
-        if (agent == null || !agent.enabled)
+        if (agent == null || !agent.enabled || !agent.isOnNavMesh)
             return;
 
         if (Time.time >= nextTargetUpdate)
@@ -120,10 +151,17 @@ public class MechaBotAI : NetworkBehaviour
             nextTargetUpdate = Time.time + targetUpdateInterval;
         }
 
-        if (currentTarget == null || targetHealth == null ||
+        if (Time.time >= nextBotRefresh)
+        {
+            RefreshNearbyBots();
+            nextBotRefresh = Time.time + 0.75f;
+        }
+
+        if (currentTarget == null ||
+            targetHealth == null ||
             targetHealth.IsDead)
         {
-            agent.isStopped = true;
+            StopMovement();
             UpdateAnimation();
             return;
         }
@@ -133,25 +171,17 @@ public class MechaBotAI : NetworkBehaviour
             currentTarget.position
         );
 
+        if (distance > loseTargetDistance)
+        {
+            StopMovement();
+            UpdateAnimation();
+            return;
+        }
+
+        UpdateTargetVelocity();
         RotateTowardsTarget();
 
-        if (HasSword.Value && distance <= attackRange)
-        {
-            agent.isStopped = true;
-
-            if (!isAttacking && Time.time >= nextAttackTime)
-                StartCoroutine(AttackRoutine());
-        }
-        else
-        {
-            if (!HasSword.Value && distance <= attackRange)
-                agent.isStopped = true;
-            else
-            {
-                agent.isStopped = false;
-                agent.SetDestination(currentTarget.position);
-            }
-        }
+        UpdateTactics(distance);
 
         UpdateAnimation();
     }
@@ -162,6 +192,7 @@ public class MechaBotAI : NetworkBehaviour
             return;
 
         float closestDistance = float.MaxValue;
+
         Transform closestTarget = null;
         MechaHealth closestHealth = null;
 
@@ -174,7 +205,7 @@ public class MechaBotAI : NetworkBehaviour
             MechaHealth health =
                 client.PlayerObject.GetComponent<MechaHealth>();
 
-            if (health != null && health.IsDead)
+            if (health == null || health.IsDead)
                 continue;
 
             float distance = Vector3.Distance(
@@ -190,8 +221,413 @@ public class MechaBotAI : NetworkBehaviour
             }
         }
 
-        currentTarget = closestTarget;
-        targetHealth = closestHealth;
+        if (currentTarget != closestTarget)
+        {
+            currentTarget = closestTarget;
+            targetHealth = closestHealth;
+
+            targetVelocity = Vector3.zero;
+
+            if (currentTarget != null)
+                lastTargetPosition = currentTarget.position;
+
+            isDisengaging = false;
+        }
+    }
+
+    private void UpdateTargetVelocity()
+    {
+        if (currentTarget == null)
+            return;
+
+        Vector3 newPosition = currentTarget.position;
+
+        targetVelocity =
+            (newPosition - lastTargetPosition) /
+            Mathf.Max(Time.deltaTime, 0.001f);
+
+        targetVelocity = Vector3.ClampMagnitude(
+            targetVelocity,
+            10f
+        );
+
+        lastTargetPosition = newPosition;
+    }
+
+    private void RefreshNearbyBots()
+    {
+        nearbyBots = FindObjectsByType<MechaBotAI>(
+            FindObjectsSortMode.None
+        );
+    }
+
+    private void UpdateTactics(float distance)
+    {
+        if (isAttacking)
+        {
+            currentState = TacticalState.Attacking;
+            agent.isStopped = true;
+            return;
+        }
+
+        if (isDisengaging)
+        {
+            if (Time.time < disengageUntil)
+            {
+                currentState = TacticalState.Disengaging;
+                PerformRetreat();
+                return;
+            }
+
+            isDisengaging = false;
+            nextFlankUpdate = 0f;
+        }
+
+        if (distance > flankDistance + 2f)
+        {
+            currentState = TacticalState.Pursuit;
+            ChaseTarget();
+            return;
+        }
+
+        currentState = TacticalState.Flanking;
+
+        if (Time.time >= nextFlankUpdate)
+        {
+            CalculateFlankPosition();
+
+            nextFlankUpdate =
+                Time.time + flankUpdateInterval;
+        }
+
+        if (distance <= attackRange &&
+            Time.time >= nextAttackTime &&
+            CanAttack())
+        {
+            currentState = TacticalState.Attacking;
+            attackCoroutine = StartCoroutine(AttackRoutine());
+            return;
+        }
+
+        MoveToFlankPosition();
+    }
+
+    private void ChaseTarget()
+    {
+        Vector3 predictedPosition =
+            currentTarget.position +
+            targetVelocity * predictionTime;
+
+        Vector3 destination =
+            predictedPosition + CalculateSeparation();
+
+        agent.speed = configuredSpeed;
+        agent.stoppingDistance = stoppingDistance;
+        agent.isStopped = false;
+
+        agent.SetDestination(destination);
+    }
+
+    private void CalculateFlankPosition()
+    {
+        if (currentTarget == null)
+            return;
+
+        float bestScore = float.MinValue;
+        Vector3 bestPosition = transform.position;
+
+        int samples = Mathf.Max(4, flankPositionSamples);
+
+        for (int i = 0; i < samples; i++)
+        {
+            float angle = preferredAngle +
+                (360f / samples) * i;
+
+            float radians = angle * Mathf.Deg2Rad;
+
+            Vector3 direction = new Vector3(
+                Mathf.Sin(radians),
+                0f,
+                Mathf.Cos(radians)
+            );
+
+            Vector3 candidate =
+                currentTarget.position +
+                direction * flankDistance;
+
+            NavMeshHit hit;
+
+            if (!NavMesh.SamplePosition(
+                candidate,
+                out hit,
+                2f,
+                NavMesh.AllAreas))
+                continue;
+
+            float score = EvaluateFlankPosition(hit.position);
+
+            if (score > bestScore)
+            {
+                bestScore = score;
+                bestPosition = hit.position;
+            }
+        }
+
+        flankDestination = bestPosition;
+    }
+
+    private float EvaluateFlankPosition(Vector3 position)
+    {
+        float score = 0f;
+        float nearestBotDistance = separationRadius * 2f;
+
+        if (nearbyBots != null)
+        {
+            foreach (MechaBotAI bot in nearbyBots)
+            {
+                if (bot == null || bot == this || !bot.IsSpawned)
+                    continue;
+
+                float distance = Vector3.Distance(
+                    position,
+                    bot.transform.position
+                );
+
+                if (distance < nearestBotDistance)
+                    nearestBotDistance = distance;
+            }
+        }
+
+        score += nearestBotDistance * 3f;
+
+        float distanceToTarget = Vector3.Distance(
+            position,
+            currentTarget.position
+        );
+
+        score -= Mathf.Abs(
+            distanceToTarget - flankDistance
+        ) * 2f;
+
+        Vector3 candidateDirection =
+            position - currentTarget.position;
+
+        candidateDirection.y = 0f;
+
+        Vector3 preferredDirection = new Vector3(
+            Mathf.Sin(preferredAngle * Mathf.Deg2Rad),
+            0f,
+            Mathf.Cos(preferredAngle * Mathf.Deg2Rad)
+        );
+
+        score += Vector3.Dot(
+            candidateDirection.normalized,
+            preferredDirection
+        ) * preferredAngleWeight;
+
+        return score;
+    }
+
+    private void MoveToFlankPosition()
+    {
+        Vector3 destination =
+            flankDestination + CalculateSeparation();
+
+        NavMeshHit hit;
+
+        if (NavMesh.SamplePosition(
+            destination,
+            out hit,
+            1.5f,
+            NavMesh.AllAreas))
+        {
+            destination = hit.position;
+        }
+        else
+        {
+            destination = flankDestination;
+        }
+
+        agent.speed = combatMovementSpeed;
+        agent.stoppingDistance = 0.5f;
+        agent.isStopped = false;
+
+        agent.SetDestination(destination);
+    }
+
+    private Vector3 CalculateSeparation()
+    {
+        Vector3 separation = Vector3.zero;
+
+        if (nearbyBots == null)
+            return separation;
+
+        int neighbors = 0;
+
+        foreach (MechaBotAI bot in nearbyBots)
+        {
+            if (bot == null || bot == this || !bot.IsSpawned)
+                continue;
+
+            Vector3 difference =
+                transform.position - bot.transform.position;
+
+            difference.y = 0f;
+
+            float distance = difference.magnitude;
+
+            if (distance <= 0.01f ||
+                distance >= separationRadius)
+                continue;
+
+            separation += difference.normalized / distance;
+            neighbors++;
+        }
+
+        if (neighbors > 0)
+        {
+            separation /= neighbors;
+
+            separation = Vector3.ClampMagnitude(
+                separation,
+                1f
+            );
+        }
+
+        return separation * separationWeight;
+    }
+
+    private bool CanAttack()
+    {
+        if (nearbyBots == null)
+            return true;
+
+        int attackers = 0;
+
+        foreach (MechaBotAI bot in nearbyBots)
+        {
+            if (bot == null || bot == this || !bot.IsSpawned)
+                continue;
+
+            if (bot.currentTarget != currentTarget)
+                continue;
+
+            if (bot.isAttacking)
+                attackers++;
+        }
+
+        return attackers < maxSimultaneousAttackers;
+    }
+
+    private IEnumerator AttackRoutine()
+    {
+        isAttacking = true;
+        nextAttackTime = Time.time + configuredCooldown;
+
+        agent.isStopped = true;
+
+        if (networkAnimator != null)
+            networkAnimator.SetTrigger("Attack");
+        else if (animator != null)
+            animator.SetTrigger("Attack");
+
+        yield return new WaitForSeconds(attackStartDelay);
+
+        if (currentTarget != null &&
+            targetHealth != null &&
+            !targetHealth.IsDead)
+        {
+            float distance = Vector3.Distance(
+                transform.position,
+                currentTarget.position
+            );
+
+            Vector3 direction =
+                currentTarget.position - transform.position;
+
+            direction.y = 0f;
+
+            float angle = Vector3.Angle(
+                transform.forward,
+                direction
+            );
+
+            if (distance <= attackRange + 0.5f &&
+                angle <= attackAngle)
+            {
+                targetHealth.TakeDamageServer(attackDamage);
+
+                Debug.Log(
+                    $"[BOT] {name} atingiu {currentTarget.name} " +
+                    $"causando {attackDamage} de dano."
+                );
+            }
+        }
+
+        yield return new WaitForSeconds(
+            Mathf.Max(0f, attackRecovery)
+        );
+
+        isAttacking = false;
+        attackCoroutine = null;
+
+        isDisengaging = true;
+        disengageUntil = Time.time + disengageDuration;
+
+        preferredAngle += Random.Range(90f, 180f);
+        preferredAngle %= 360f;
+
+        nextFlankUpdate = 0f;
+    }
+
+    private void PerformRetreat()
+    {
+        if (currentTarget == null)
+            return;
+
+        Vector3 awayDirection =
+            transform.position - currentTarget.position;
+
+        awayDirection.y = 0f;
+
+        if (awayDirection.sqrMagnitude < 0.01f)
+        {
+            awayDirection = -transform.forward;
+            awayDirection.y = 0f;
+        }
+
+        awayDirection.Normalize();
+
+        Vector3 lateral = Vector3.Cross(
+            Vector3.up,
+            awayDirection
+        );
+
+        float side = preferredAngle % 2f > 1f ? 1f : -1f;
+
+        Vector3 retreatDirection =
+            (awayDirection + lateral * side * 0.5f).normalized;
+
+        Vector3 destination =
+            transform.position +
+            retreatDirection * retreatDistance;
+
+        NavMeshHit hit;
+
+        if (NavMesh.SamplePosition(
+            destination,
+            out hit,
+            3f,
+            NavMesh.AllAreas))
+        {
+            destination = hit.position;
+        }
+
+        agent.speed = retreatSpeed;
+        agent.stoppingDistance = 0f;
+        agent.isStopped = false;
+
+        agent.SetDestination(destination);
     }
 
     private void RotateTowardsTarget()
@@ -217,65 +653,90 @@ public class MechaBotAI : NetworkBehaviour
         );
     }
 
-    private IEnumerator AttackRoutine()
-    {
-        isAttacking = true;
-        nextAttackTime = Time.time + configuredCooldown;
-
-        if (networkAnimator != null)
-            networkAnimator.SetTrigger("Attack");
-        else if (animator != null)
-            animator.SetTrigger("Attack");
-
-        if (swordDamage != null && HasSword.Value)
-            swordDamage.SetAttacking(true);
-
-        yield return new WaitForSeconds(attackDuration);
-
-        if (swordDamage != null)
-            swordDamage.SetAttacking(false);
-
-        isAttacking = false;
-    }
-
     private void UpdateAnimation()
     {
         if (animator == null)
             return;
 
-        float speed = 0f;
+        Vector3 localVelocity = Vector3.zero;
 
-        if (agent != null && agent.enabled && !agent.isStopped)
-            speed = agent.velocity.magnitude;
+        if (agent != null &&
+            agent.enabled &&
+            agent.isOnNavMesh &&
+            !agent.isStopped)
+        {
+            localVelocity = transform.InverseTransformDirection(
+                agent.velocity
+            );
+        }
 
-        animator.SetFloat("Speed", speed);
+        float currentSpeed = localVelocity.magnitude;
+
+        float normalizedX = 0f;
+        float normalizedY = 0f;
+
+        float referenceSpeed = Mathf.Max(agent.speed, 0.01f);
+
+        normalizedX = Mathf.Clamp(
+            localVelocity.x / referenceSpeed,
+            -1f,
+            1f
+        );
+
+        normalizedY = Mathf.Clamp(
+            localVelocity.z / referenceSpeed,
+            -1f,
+            1f
+        );
+
+        animator.SetFloat(
+            speedParameter,
+            currentSpeed,
+            animationDampTime,
+            Time.deltaTime
+        );
+
+        animator.SetFloat(
+            strafeXParameter,
+            normalizedX,
+            animationDampTime,
+            Time.deltaTime
+        );
+
+        animator.SetFloat(
+            strafeYParameter,
+            normalizedY,
+            animationDampTime,
+            Time.deltaTime
+        );
     }
 
-    private void OnSwordChanged(bool previous, bool current)
+    private void StopMovement()
     {
-        ApplySwordState(current);
-    }
-
-    private void ApplySwordState(bool armed)
-    {
-        if (swordVisual != null)
-            swordVisual.SetActive(armed);
-
-        if (swordDamage != null && !IsServer)
-            swordDamage.SetAttacking(false);
+        if (agent != null &&
+            agent.enabled &&
+            agent.isOnNavMesh)
+        {
+            agent.isStopped = true;
+            agent.ResetPath();
+        }
     }
 
     public override void OnNetworkDespawn()
     {
-        HasSword.OnValueChanged -= OnSwordChanged;
+        if (attackCoroutine != null)
+            StopCoroutine(attackCoroutine);
 
-        if (swordDamage != null && IsServer)
-            swordDamage.SetAttacking(false);
+        isAttacking = false;
+        isDisengaging = false;
     }
 
     private void OnDisable()
     {
-        if (swordDamage != null)
-            swordDamage.SetAttacking(false);
+        if (attackCoroutine != null)
+            StopCoroutine(attackCoroutine);
+
+        isAttacking = false;
+        isDisengaging = false;
     }
 }

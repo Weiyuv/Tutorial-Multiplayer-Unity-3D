@@ -106,7 +106,6 @@ public class CrystalSwordAttack : NetworkBehaviour
         serverNextAttackTime = Time.time + attackCooldown;
         currentSwordDamage = swordDamage;
 
-        // Garante que começa desligado.
         currentSwordDamage.DisableAttack();
 
         if (networkAnimator != null)
@@ -125,7 +124,6 @@ public class CrystalSwordAttack : NetworkBehaviour
     {
         yield return new WaitForSeconds(hitDelay);
 
-        // Confere novamente se a espada ainda pertence ao jogador.
         if (crystal == null ||
             !crystal.IsHeld ||
             crystal.HolderClientId != OwnerClientId ||
@@ -135,6 +133,7 @@ public class CrystalSwordAttack : NetworkBehaviour
             yield break;
         }
 
+        // Ativa o collider e permite causar dano.
         swordDamage.SetAttacking(true);
 
         yield return new WaitForSeconds(hitboxActiveTime);
@@ -150,8 +149,6 @@ public class CrystalSwordAttack : NetworkBehaviour
         currentSwordDamage = null;
         attacking = false;
         attackCoroutine = null;
-
-        Debug.Log("[SWORD ATTACK] Ataque finalizado.");
     }
 
     public override void OnNetworkDespawn()
