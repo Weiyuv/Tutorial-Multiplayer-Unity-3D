@@ -17,11 +17,11 @@ public class MainMenuController : MonoBehaviour
     private Button playButton;
     private Button settingsButton;
     private Button quitButton;
+    private Button backButton;
 
     private VisualElement menuButtons;
-    private Label title;
     private VisualElement settingsPanel;
-    private Button backButton;
+    private Label title;
 
     private Slider volumeSlider;
     private Label volumeValue;
@@ -31,6 +31,8 @@ public class MainMenuController : MonoBehaviour
     private Button leftBinding;
     private Button rightBinding;
     private Button dashBinding;
+    private Button attackBinding;
+    private Button pickupBinding;
 
     private string waitingForBinding;
     private Button waitingButton;
@@ -41,7 +43,9 @@ public class MainMenuController : MonoBehaviour
         "MoveBackward",
         "MoveLeft",
         "MoveRight",
-        "Dash"
+        "Dash",
+        "Attack",
+        "Pickup"
     };
 
     private readonly Key[] defaultKeys =
@@ -50,10 +54,13 @@ public class MainMenuController : MonoBehaviour
         Key.S,
         Key.A,
         Key.D,
-        Key.LeftShift
+        Key.LeftShift,
+        Key.None,
+        Key.E
     };
 
     private const string VolumeKey = "Mecha_MasterVolume";
+    private const string MouseLeftBinding = "MOUSE 1";
 
     private void Awake()
     {
@@ -95,6 +102,8 @@ public class MainMenuController : MonoBehaviour
         leftBinding = root.Q<Button>("LeftBinding");
         rightBinding = root.Q<Button>("RightBinding");
         dashBinding = root.Q<Button>("DashBinding");
+        attackBinding = root.Q<Button>("AttackBinding");
+        pickupBinding = root.Q<Button>("PickupBinding");
 
         if (playButton != null)
             playButton.clicked += PlayGame;
@@ -138,6 +147,8 @@ public class MainMenuController : MonoBehaviour
         RegisterBindingButton(leftBinding, "MoveLeft");
         RegisterBindingButton(rightBinding, "MoveRight");
         RegisterBindingButton(dashBinding, "Dash");
+        RegisterBindingButton(attackBinding, "Attack");
+        RegisterBindingButton(pickupBinding, "Pickup");
 
         LoadBindings();
     }
@@ -147,43 +158,77 @@ public class MainMenuController : MonoBehaviour
         if (string.IsNullOrEmpty(waitingForBinding))
             return;
 
-        if (Keyboard.current == null)
-            return;
-
-        if (Keyboard.current.escapeKey.wasPressedThisFrame)
+        if (Keyboard.current != null)
         {
-            CancelBinding();
-            return;
-        }
-
-        foreach (KeyControl keyControl in Keyboard.current.allKeys)
-        {
-            if (!keyControl.wasPressedThisFrame)
-                continue;
-
-            Key newKey = keyControl.keyCode;
-
-            if (newKey == Key.None)
-                continue;
-
-            if (IsKeyUsedByAnotherBinding(newKey, waitingForBinding))
+            if (Keyboard.current.escapeKey.wasPressedThisFrame)
             {
-                if (waitingButton != null)
-                    waitingButton.text = "JÁ UTILIZADA";
-
+                CancelBinding();
                 return;
             }
 
-            PlayerPrefs.SetInt(GetPreferenceKey(waitingForBinding), (int)newKey);
-            PlayerPrefs.Save();
+            foreach (KeyControl keyControl in Keyboard.current.allKeys)
+            {
+                if (!keyControl.wasPressedThisFrame)
+                    continue;
 
+                Key newKey = keyControl.keyCode;
+
+                if (newKey == Key.None)
+                    continue;
+
+                if (IsKeyUsedByAnotherBinding(newKey, waitingForBinding))
+                {
+                    if (waitingButton != null)
+                        waitingButton.text = "JÁ UTILIZADA";
+
+                    return;
+                }
+
+                SaveBinding(waitingForBinding, (int)newKey);
+                return;
+            }
+        }
+
+        if (Mouse.current != null)
+        {
+            if (Mouse.current.leftButton.wasPressedThisFrame)
+            {
+                SaveBinding(waitingForBinding, -1);
+                return;
+            }
+
+            if (Mouse.current.rightButton.wasPressedThisFrame)
+            {
+                SaveBinding(waitingForBinding, -2);
+                return;
+            }
+
+            if (Mouse.current.middleButton.wasPressedThisFrame)
+            {
+                SaveBinding(waitingForBinding, -3);
+                return;
+            }
+        }
+    }
+
+    private void SaveBinding(string bindingName, int bindingValue)
+    {
+        if (IsBindingUsedByAnother(bindingValue, bindingName))
+        {
             if (waitingButton != null)
-                waitingButton.text = FormatKey(newKey);
+                waitingButton.text = "JÁ UTILIZADA";
 
-            waitingForBinding = null;
-            waitingButton = null;
             return;
         }
+
+        PlayerPrefs.SetInt(GetPreferenceKey(bindingName), bindingValue);
+        PlayerPrefs.Save();
+
+        if (waitingButton != null)
+            waitingButton.text = FormatBinding(bindingValue);
+
+        waitingForBinding = null;
+        waitingButton = null;
     }
 
     private void PlayGame()
@@ -196,10 +241,7 @@ public class MainMenuController : MonoBehaviour
 
         if (!Application.CanStreamedLevelBeLoaded(gameSceneName))
         {
-            Debug.LogError(
-                "[MainMenuController] Cena '" + gameSceneName +
-                "' não encontrada. Confira File > Build Profiles > Scene List."
-            );
+            Debug.LogError("[MainMenuController] Cena '" + gameSceneName + "' não encontrada.");
             return;
         }
 
@@ -209,12 +251,7 @@ public class MainMenuController : MonoBehaviour
     private void OpenSettings()
     {
         if (settingsPanel == null || menuButtons == null)
-        {
-            Debug.LogError(
-                "[MainMenuController] SettingsPanel ou MenuButtons não encontrado no UXML."
-            );
             return;
-        }
 
         CancelBinding();
 
@@ -262,10 +299,14 @@ public class MainMenuController : MonoBehaviour
     {
         if (button != null)
             button.clicked += () => StartBinding(button, bindingName);
+        else
+            Debug.LogError("[MainMenuController] Botão não encontrado: " + bindingName);
     }
 
     private void StartBinding(Button button, string bindingName)
     {
+        CancelBinding();
+
         waitingForBinding = bindingName;
         waitingButton = button;
         waitingButton.text = "PRESSIONE...";
@@ -274,7 +315,7 @@ public class MainMenuController : MonoBehaviour
     private void CancelBinding()
     {
         if (waitingButton != null && !string.IsNullOrEmpty(waitingForBinding))
-            waitingButton.text = FormatKey(GetSavedKey(waitingForBinding));
+            waitingButton.text = FormatBinding(GetSavedBinding(waitingForBinding));
 
         waitingForBinding = null;
         waitingButton = null;
@@ -287,44 +328,48 @@ public class MainMenuController : MonoBehaviour
         SetBindingText(leftBinding, "MoveLeft");
         SetBindingText(rightBinding, "MoveRight");
         SetBindingText(dashBinding, "Dash");
+        SetBindingText(attackBinding, "Attack");
+        SetBindingText(pickupBinding, "Pickup");
     }
 
     private void SetBindingText(Button button, string bindingName)
     {
         if (button != null)
-            button.text = FormatKey(GetSavedKey(bindingName));
+            button.text = FormatBinding(GetSavedBinding(bindingName));
     }
 
-    private Key GetSavedKey(string bindingName)
+    private int GetSavedBinding(string bindingName)
     {
         int index = Array.IndexOf(bindingNames, bindingName);
 
         if (index < 0)
-            return Key.None;
+            return 0;
 
-        int savedValue = PlayerPrefs.GetInt(
-            GetPreferenceKey(bindingName),
-            (int)defaultKeys[index]
-        );
+        int defaultValue = (int)defaultKeys[index];
 
-        if (!Enum.IsDefined(typeof(Key), savedValue))
-            return defaultKeys[index];
+        if (bindingName == "Attack")
+            defaultValue = -1;
 
-        return (Key)savedValue;
+        return PlayerPrefs.GetInt(GetPreferenceKey(bindingName), defaultValue);
     }
 
-    private bool IsKeyUsedByAnotherBinding(Key key, string currentBinding)
+    private bool IsBindingUsedByAnother(int value, string currentBinding)
     {
         foreach (string bindingName in bindingNames)
         {
             if (bindingName == currentBinding)
                 continue;
 
-            if (GetSavedKey(bindingName) == key)
+            if (GetSavedBinding(bindingName) == value)
                 return true;
         }
 
         return false;
+    }
+
+    private bool IsKeyUsedByAnotherBinding(Key key, string currentBinding)
+    {
+        return IsBindingUsedByAnother((int)key, currentBinding);
     }
 
     private string GetPreferenceKey(string bindingName)
@@ -332,12 +377,76 @@ public class MainMenuController : MonoBehaviour
         return "Mecha_Key_" + bindingName;
     }
 
-    private string FormatKey(Key key)
+    private string FormatBinding(int value)
     {
-        if (key == Key.LeftShift || key == Key.RightShift)
-            return "SHIFT";
+        switch (value)
+        {
+            case -1: return "MOUSE 1";
+            case -2: return "MOUSE 2";
+            case -3: return "MOUSE 3";
+            default:
+                if (!Enum.IsDefined(typeof(Key), value))
+                    return "DESCONHECIDO";
 
-        return key.ToString().ToUpperInvariant();
+                Key key = (Key)value;
+
+                if (key == Key.LeftShift || key == Key.RightShift)
+                    return "SHIFT";
+
+                return key.ToString().ToUpperInvariant();
+        }
+    }
+
+    public static int GetBindingValue(string bindingName, Key defaultKey)
+    {
+        int defaultValue = (int)defaultKey;
+
+        if (bindingName == "Attack")
+            defaultValue = -1;
+
+        return PlayerPrefs.GetInt("Mecha_Key_" + bindingName, defaultValue);
+    }
+
+    public static bool WasBindingPressedThisFrame(string bindingName, Key defaultKey)
+    {
+        int value = GetBindingValue(bindingName, defaultKey);
+
+        if (value == -1)
+            return Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame;
+
+        if (value == -2)
+            return Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame;
+
+        if (value == -3)
+            return Mouse.current != null && Mouse.current.middleButton.wasPressedThisFrame;
+
+        if (Keyboard.current == null)
+            return false;
+
+        Key key = (Key)value;
+
+        return key != Key.None && Keyboard.current[key].wasPressedThisFrame;
+    }
+
+    public static bool IsBindingPressed(string bindingName, Key defaultKey)
+    {
+        int value = GetBindingValue(bindingName, defaultKey);
+
+        if (value == -1)
+            return Mouse.current != null && Mouse.current.leftButton.isPressed;
+
+        if (value == -2)
+            return Mouse.current != null && Mouse.current.rightButton.isPressed;
+
+        if (value == -3)
+            return Mouse.current != null && Mouse.current.middleButton.isPressed;
+
+        if (Keyboard.current == null)
+            return false;
+
+        Key key = (Key)value;
+
+        return key != Key.None && Keyboard.current[key].isPressed;
     }
 
     private void QuitGame()

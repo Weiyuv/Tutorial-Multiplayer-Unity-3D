@@ -51,12 +51,12 @@
 
             <ui:VisualElement class="BindingRow">
                 <ui:Label text="Atacar" class="BindingName"/>
-                <ui:Label text="MOUSE ESQUERDO" class="BindingName"/>
+                <ui:Button name="AttackBinding" text="MOUSE 1" class="BindingButton"/>
             </ui:VisualElement>
 
             <ui:VisualElement class="BindingRow">
-                <ui:Label text="Defender / Block" class="BindingName"/>
-                <ui:Label text="MOUSE DIREITO" class="BindingName"/>
+                <ui:Label text="Pegar item" class="BindingName"/>
+                <ui:Button name="PickupBinding" text="E" class="BindingButton"/>
             </ui:VisualElement>
 
             <ui:Button name="BackButton" text="VOLTAR"/>

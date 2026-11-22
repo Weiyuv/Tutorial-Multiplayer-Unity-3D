@@ -1,4 +1,5 @@
 
+using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -14,8 +15,11 @@ public class HUDController : MonoBehaviour
     private VisualElement playerHealthFill;
     private VisualElement enemyPanel;
     private VisualElement enemyHealthFill;
+
     private Label enemyHealthText;
     private Label dashText;
+
+    private MechaHealth localPlayerHealth;
 
     private float dashCooldownRemaining;
     private bool isDashCoolingDown;
@@ -44,10 +48,7 @@ public class HUDController : MonoBehaviour
             return;
         }
 
-        // O HUD e apenas visual: nao deve interceptar cliques.
         root.pickingMode = PickingMode.Ignore;
-
-        // Evita que os elementos visuais do HUD bloqueiem o menu.
         IgnorarCliquesNosElementosVisuais(root);
 
         playerHealthFill = root.Q<VisualElement>("PlayerHealthFill");
@@ -82,6 +83,88 @@ public class HUDController : MonoBehaviour
         SetDashReady();
     }
 
+    private void OnEnable()
+    {
+        TryConnectPlayerHealth();
+    }
+
+    private void OnDisable()
+    {
+        DisconnectPlayerHealth();
+    }
+
+    private void Update()
+    {
+        // Tenta encontrar o jogador local até o Netcode terminar
+        // de criar e associar o PlayerObject.
+        if (localPlayerHealth == null)
+            TryConnectPlayerHealth();
+
+        UpdateDashCooldown();
+    }
+
+    private void TryConnectPlayerHealth()
+    {
+        if (NetworkManager.Singleton == null)
+            return;
+
+        if (!NetworkManager.Singleton.IsClient)
+            return;
+
+        if (NetworkManager.Singleton.LocalClient == null)
+            return;
+
+        NetworkObject playerObject =
+            NetworkManager.Singleton.LocalClient.PlayerObject;
+
+        if (playerObject == null)
+            return;
+
+        MechaHealth health =
+            playerObject.GetComponent<MechaHealth>();
+
+        if (health == null)
+        {
+            Debug.LogError(
+                "[HUD] MechaHealth nao encontrado no PlayerObject."
+            );
+            return;
+        }
+
+        if (localPlayerHealth == health)
+            return;
+
+        DisconnectPlayerHealth();
+
+        localPlayerHealth = health;
+
+        localPlayerHealth.HealthChanged += OnPlayerHealthChanged;
+
+        // Atualiza imediatamente com a vida atual.
+        SetPlayerHealth(
+            localPlayerHealth.CurrentHealth,
+            localPlayerHealth.MaxHealth
+        );
+
+        Debug.Log("[HUD] Conectado ao MechaHealth do jogador local.");
+    }
+
+    private void DisconnectPlayerHealth()
+    {
+        if (localPlayerHealth == null)
+            return;
+
+        localPlayerHealth.HealthChanged -= OnPlayerHealthChanged;
+        localPlayerHealth = null;
+    }
+
+    private void OnPlayerHealthChanged(
+        float currentHealth,
+        float maxHealth)
+    {
+        SetPlayerHealth(currentHealth, maxHealth);
+    }
+
     private void IgnorarCliquesNosElementosVisuais(
         VisualElement elemento)
     {
@@ -96,7 +179,7 @@ public class HUDController : MonoBehaviour
         }
     }
 
-    private void Update()
+    private void UpdateDashCooldown()
     {
         if (!isDashCoolingDown)
             return;

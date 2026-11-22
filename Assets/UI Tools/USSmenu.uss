@@ -106,7 +106,8 @@ Button:hover {
 }
 
 .BindingName {
-    flex-grow: 1;
+    width: 200px;
+    flex-shrink: 0;
     color: rgb(235, 242, 255);
     font-size: 16px;
 }
