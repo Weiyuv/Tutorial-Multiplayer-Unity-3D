@@ -228,7 +228,7 @@ NavMeshAgent:
   m_Enabled: 1
   m_AgentTypeID: 0
   m_Radius: 0.5
-  m_Speed: 3.5
+  m_Speed: 4
   m_Acceleration: 8
   avoidancePriority: 50
   m_AngularSpeed: 120
@@ -256,6 +256,7 @@ MonoBehaviour:
   agent: {fileID: 1426172491220393718}
   animator: {fileID: 4304430931844063784}
   networkAnimator: {fileID: 5602293162040080157}
+  stunDuration: 0.7
   speedParameter: Speed
   strafeXParameter: MoveX
   strafeYParameter: MoveY
@@ -263,7 +264,7 @@ MonoBehaviour:
   attackRange: 1.4
   attackDamage: 5
   attackCooldown: 0.9
-  attackStartDelay: 0.2
+  attackStartDelay: 0.3
   attackRecovery: 0.5
   rotationSpeed: 20
   attackAngle: 45

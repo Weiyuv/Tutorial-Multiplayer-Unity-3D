@@ -1,0 +1,79 @@
+
+.pause-root {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0.55);
+}
+
+.pause-panel {
+    width: 420px;
+    padding: 35px;
+    background-color: rgba(15, 20, 30, 0.97);
+    border-top-width: 3px;
+    border-top-color: rgb(35, 145, 230);
+    border-bottom-width: 2px;
+    border-bottom-color: rgb(35, 145, 230);
+    border-left-width: 1px;
+    border-left-color: rgba(100, 130, 160, 0.4);
+    border-right-width: 1px;
+    border-right-color: rgba(100, 130, 160, 0.4);
+    align-items: center;
+}
+
+.pause-title {
+    color: rgb(255, 255, 255);
+    font-size: 36px;
+    -unity-font-style: bold;
+    margin-bottom: 30px;
+    -unity-text-align: middle-center;
+}
+
+.pause-buttons {
+    width: 100%;
+    align-items: stretch;
+}
+
+.pause-button {
+    height: 52px;
+    margin-bottom: 12px;
+    background-color: rgb(35, 48, 65);
+    color: white;
+    font-size: 15px;
+    -unity-font-style: bold;
+    border-top-width: 0;
+    border-bottom-width: 0;
+    border-left-width: 0;
+    border-right-width: 0;
+}
+
+.pause-button:hover {
+    background-color: rgb(48, 105, 155);
+}
+
+.primary-button {
+    background-color: rgb(25, 115, 190);
+}
+
+.primary-button:hover {
+    background-color: rgb(40, 145, 225);
+}
+
+.quit-button {
+    background-color: rgb(130, 40, 45);
+}
+
+.quit-button:hover {
+    background-color: rgb(175, 45, 50);
+}
+
+.pause-hint {
+    margin-top: 15px;
+    color: rgb(160, 170, 185);
+    font-size: 12px;
+    -unity-text-align: middle-center;
+}

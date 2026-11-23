@@ -1,3 +1,4 @@
+
 using UnityEngine;
 using TMPro;
 using Unity.Netcode;
@@ -26,8 +27,8 @@ public class LANMultiplayer : MonoBehaviour
 
     private void Awake()
     {
-        Cursor.lockState = CursorLockMode.None;
-        Cursor.visible = true;
+        UnityEngine.Cursor.lockState = CursorLockMode.None;
+        UnityEngine.Cursor.visible = true;
 
         BloquearMovimento();
         LocalizarNetworkManager();
@@ -41,8 +42,8 @@ public class LANMultiplayer : MonoBehaviour
         if (menuCanvas != null)
             menuCanvas.gameObject.SetActive(true);
 
-        Cursor.lockState = CursorLockMode.None;
-        Cursor.visible = true;
+        UnityEngine.Cursor.lockState = CursorLockMode.None;
+        UnityEngine.Cursor.visible = true;
 
         if (networkManager == null)
             AtualizarStatus("NetworkManager não encontrado na cena.");
@@ -54,13 +55,8 @@ public class LANMultiplayer : MonoBehaviour
     {
         if (menuCanvas != null && menuCanvas.gameObject.activeInHierarchy)
         {
-            Cursor.lockState = CursorLockMode.None;
-            Cursor.visible = true;
-        }
-        else if (movimentoLiberado)
-        {
-            Cursor.lockState = CursorLockMode.Locked;
-            Cursor.visible = false;
+            UnityEngine.Cursor.lockState = CursorLockMode.None;
+            UnityEngine.Cursor.visible = true;
         }
     }
 
@@ -139,13 +135,9 @@ public class LANMultiplayer : MonoBehaviour
         bool iniciado = networkManager.StartHost();
 
         if (iniciado)
-        {
             LiberarMovimento();
-        }
         else
-        {
             AtualizarStatus("Falha ao criar a sala. Verifique o Console.");
-        }
     }
 
     public void EntrarPorIP()
@@ -178,13 +170,9 @@ public class LANMultiplayer : MonoBehaviour
         bool iniciado = networkManager.StartClient();
 
         if (!iniciado)
-        {
             AtualizarStatus("Falha ao iniciar a conexão. Verifique o Console.");
-        }
         else
-        {
             AtualizarStatus("Aguardando conexão com o anfitrião...");
-        }
     }
 
     private bool ValidarComponentes()
@@ -236,9 +224,7 @@ public class LANMultiplayer : MonoBehaviour
             return;
 
         if (clientId == networkManager.LocalClientId)
-        {
             LiberarMovimento();
-        }
     }
 
     private void AoDesconectarCliente(ulong clientId)
@@ -253,8 +239,8 @@ public class LANMultiplayer : MonoBehaviour
             if (menuCanvas != null)
                 menuCanvas.gameObject.SetActive(true);
 
-            Cursor.lockState = CursorLockMode.None;
-            Cursor.visible = true;
+            UnityEngine.Cursor.lockState = CursorLockMode.None;
+            UnityEngine.Cursor.visible = true;
 
             AtualizarStatus("Desconectado. Tente entrar novamente.");
         }
@@ -270,8 +256,8 @@ public class LANMultiplayer : MonoBehaviour
 
         menuCanvas.gameObject.SetActive(false);
 
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
+        UnityEngine.Cursor.lockState = CursorLockMode.Locked;
+        UnityEngine.Cursor.visible = false;
     }
 
     private void AtualizarStatus(string mensagem)

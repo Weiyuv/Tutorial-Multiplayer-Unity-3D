@@ -14,6 +14,14 @@ public class MechaBotAI : NetworkBehaviour
     [SerializeField] private Animator animator;
     [SerializeField] private NetworkAnimator networkAnimator;
 
+    [Header("Stun")]
+    [SerializeField, Min(0.1f)] private float stunDuration = 1.2f;
+
+    private bool isStunned;
+    private Coroutine stunCoroutine;
+
+    public bool IsStunned => isStunned;
+
     [Header("Animacao Strafe")]
     [SerializeField] private string speedParameter = "Speed";
     [SerializeField] private string strafeXParameter = "MoveX";
@@ -69,7 +77,6 @@ public class MechaBotAI : NetworkBehaviour
     private float nextBotRefresh;
     private float nextAttackTime;
     private float nextFlankUpdate;
-
     private float disengageUntil;
     private float preferredAngle;
 
@@ -90,10 +97,7 @@ public class MechaBotAI : NetworkBehaviour
 
     private TacticalState currentState;
 
-    public void ConfigureServer(
-        bool armed,
-        float movementSpeed,
-        float cooldown)
+    public void ConfigureServer(bool armed, float movementSpeed, float cooldown)
     {
         configuredSpeed = movementSpeed;
         configuredCooldown = cooldown;
@@ -125,7 +129,6 @@ public class MechaBotAI : NetworkBehaviour
             agent.isStopped = false;
 
             preferredAngle = Random.Range(0f, 360f);
-
             nextAttackTime = Time.time + Random.Range(0.5f, 2f);
             nextFlankUpdate = Time.time + Random.Range(0f, 1f);
 
@@ -142,6 +145,12 @@ public class MechaBotAI : NetworkBehaviour
         if (!IsSpawned || !IsServer)
             return;
 
+        if (isStunned)
+        {
+            StopAgentMovement();
+            return;
+        }
+
         if (agent == null || !agent.enabled || !agent.isOnNavMesh)
             return;
 
@@ -157,9 +166,7 @@ public class MechaBotAI : NetworkBehaviour
             nextBotRefresh = Time.time + 0.75f;
         }
 
-        if (currentTarget == null ||
-            targetHealth == null ||
-            targetHealth.IsDead)
+        if (currentTarget == null || targetHealth == null || targetHealth.IsDead)
         {
             StopMovement();
             UpdateAnimation();
@@ -180,10 +187,84 @@ public class MechaBotAI : NetworkBehaviour
 
         UpdateTargetVelocity();
         RotateTowardsTarget();
-
         UpdateTactics(distance);
-
         UpdateAnimation();
+    }
+
+    public void StunServer()
+    {
+        StunServer(stunDuration);
+    }
+
+    public void StunServer(float duration)
+    {
+        if (!IsServer || !IsSpawned || duration <= 0f)
+            return;
+
+        if (stunCoroutine != null)
+        {
+            StopCoroutine(stunCoroutine);
+            stunCoroutine = null;
+        }
+
+        isStunned = true;
+
+        if (attackCoroutine != null)
+        {
+            StopCoroutine(attackCoroutine);
+            attackCoroutine = null;
+        }
+
+        isAttacking = false;
+        isDisengaging = false;
+        currentState = TacticalState.Pursuit;
+
+        StopAgentMovement();
+
+        if (animator != null)
+        {
+            animator.SetFloat(speedParameter, 0f);
+            animator.SetFloat(strafeXParameter, 0f);
+            animator.SetFloat(strafeYParameter, 0f);
+        }
+
+        stunCoroutine = StartCoroutine(StunRoutine(duration));
+    }
+
+    private IEnumerator StunRoutine(float duration)
+    {
+        yield return new WaitForSeconds(duration);
+
+        if (!IsServer || !IsSpawned)
+            yield break;
+
+        stunCoroutine = null;
+
+        MechaHealth health = GetComponent<MechaHealth>();
+
+        if (health != null && health.IsDead)
+            yield break;
+
+        isStunned = false;
+
+        if (agent != null && agent.enabled && agent.isOnNavMesh)
+            agent.isStopped = false;
+
+        nextTargetUpdate = 0f;
+        nextFlankUpdate = 0f;
+    }
+
+    private void StopAgentMovement()
+    {
+        if (agent == null || !agent.enabled)
+            return;
+
+        if (agent.isOnNavMesh)
+        {
+            agent.isStopped = true;
+            agent.ResetPath();
+            agent.velocity = Vector3.zero;
+        }
     }
 
     private void FindTarget()
@@ -196,14 +277,12 @@ public class MechaBotAI : NetworkBehaviour
         Transform closestTarget = null;
         MechaHealth closestHealth = null;
 
-        foreach (NetworkClient client in
-                 NetworkManager.Singleton.ConnectedClientsList)
+        foreach (NetworkClient client in NetworkManager.Singleton.ConnectedClientsList)
         {
             if (client.PlayerObject == null)
                 continue;
 
-            MechaHealth health =
-                client.PlayerObject.GetComponent<MechaHealth>();
+            MechaHealth health = client.PlayerObject.GetComponent<MechaHealth>();
 
             if (health == null || health.IsDead)
                 continue;
@@ -225,7 +304,6 @@ public class MechaBotAI : NetworkBehaviour
         {
             currentTarget = closestTarget;
             targetHealth = closestHealth;
-
             targetVelocity = Vector3.zero;
 
             if (currentTarget != null)
@@ -242,15 +320,10 @@ public class MechaBotAI : NetworkBehaviour
 
         Vector3 newPosition = currentTarget.position;
 
-        targetVelocity =
-            (newPosition - lastTargetPosition) /
-            Mathf.Max(Time.deltaTime, 0.001f);
+        targetVelocity = (newPosition - lastTargetPosition) /
+                         Mathf.Max(Time.deltaTime, 0.001f);
 
-        targetVelocity = Vector3.ClampMagnitude(
-            targetVelocity,
-            10f
-        );
-
+        targetVelocity = Vector3.ClampMagnitude(targetVelocity, 10f);
         lastTargetPosition = newPosition;
     }
 
@@ -295,9 +368,7 @@ public class MechaBotAI : NetworkBehaviour
         if (Time.time >= nextFlankUpdate)
         {
             CalculateFlankPosition();
-
-            nextFlankUpdate =
-                Time.time + flankUpdateInterval;
+            nextFlankUpdate = Time.time + flankUpdateInterval;
         }
 
         if (distance <= attackRange &&
@@ -314,17 +385,14 @@ public class MechaBotAI : NetworkBehaviour
 
     private void ChaseTarget()
     {
-        Vector3 predictedPosition =
-            currentTarget.position +
-            targetVelocity * predictionTime;
+        Vector3 predictedPosition = currentTarget.position +
+                                    targetVelocity * predictionTime;
 
-        Vector3 destination =
-            predictedPosition + CalculateSeparation();
+        Vector3 destination = predictedPosition + CalculateSeparation();
 
         agent.speed = configuredSpeed;
         agent.stoppingDistance = stoppingDistance;
         agent.isStopped = false;
-
         agent.SetDestination(destination);
     }
 
@@ -340,9 +408,7 @@ public class MechaBotAI : NetworkBehaviour
 
         for (int i = 0; i < samples; i++)
         {
-            float angle = preferredAngle +
-                (360f / samples) * i;
-
+            float angle = preferredAngle + (360f / samples) * i;
             float radians = angle * Mathf.Deg2Rad;
 
             Vector3 direction = new Vector3(
@@ -351,15 +417,12 @@ public class MechaBotAI : NetworkBehaviour
                 Mathf.Cos(radians)
             );
 
-            Vector3 candidate =
-                currentTarget.position +
-                direction * flankDistance;
-
-            NavMeshHit hit;
+            Vector3 candidate = currentTarget.position +
+                                direction * flankDistance;
 
             if (!NavMesh.SamplePosition(
                 candidate,
-                out hit,
+                out NavMeshHit hit,
                 2f,
                 NavMesh.AllAreas))
                 continue;
@@ -405,13 +468,9 @@ public class MechaBotAI : NetworkBehaviour
             currentTarget.position
         );
 
-        score -= Mathf.Abs(
-            distanceToTarget - flankDistance
-        ) * 2f;
+        score -= Mathf.Abs(distanceToTarget - flankDistance) * 2f;
 
-        Vector3 candidateDirection =
-            position - currentTarget.position;
-
+        Vector3 candidateDirection = position - currentTarget.position;
         candidateDirection.y = 0f;
 
         Vector3 preferredDirection = new Vector3(
@@ -430,14 +489,11 @@ public class MechaBotAI : NetworkBehaviour
 
     private void MoveToFlankPosition()
     {
-        Vector3 destination =
-            flankDestination + CalculateSeparation();
-
-        NavMeshHit hit;
+        Vector3 destination = flankDestination + CalculateSeparation();
 
         if (NavMesh.SamplePosition(
             destination,
-            out hit,
+            out NavMeshHit hit,
             1.5f,
             NavMesh.AllAreas))
         {
@@ -451,7 +507,6 @@ public class MechaBotAI : NetworkBehaviour
         agent.speed = combatMovementSpeed;
         agent.stoppingDistance = 0.5f;
         agent.isStopped = false;
-
         agent.SetDestination(destination);
     }
 
@@ -469,15 +524,12 @@ public class MechaBotAI : NetworkBehaviour
             if (bot == null || bot == this || !bot.IsSpawned)
                 continue;
 
-            Vector3 difference =
-                transform.position - bot.transform.position;
-
+            Vector3 difference = transform.position - bot.transform.position;
             difference.y = 0f;
 
             float distance = difference.magnitude;
 
-            if (distance <= 0.01f ||
-                distance >= separationRadius)
+            if (distance <= 0.01f || distance >= separationRadius)
                 continue;
 
             separation += difference.normalized / distance;
@@ -487,11 +539,7 @@ public class MechaBotAI : NetworkBehaviour
         if (neighbors > 0)
         {
             separation /= neighbors;
-
-            separation = Vector3.ClampMagnitude(
-                separation,
-                1f
-            );
+            separation = Vector3.ClampMagnitude(separation, 1f);
         }
 
         return separation * separationWeight;
@@ -533,6 +581,9 @@ public class MechaBotAI : NetworkBehaviour
 
         yield return new WaitForSeconds(attackStartDelay);
 
+        if (isStunned)
+            yield break;
+
         if (currentTarget != null &&
             targetHealth != null &&
             !targetHealth.IsDead)
@@ -542,31 +593,19 @@ public class MechaBotAI : NetworkBehaviour
                 currentTarget.position
             );
 
-            Vector3 direction =
-                currentTarget.position - transform.position;
-
+            Vector3 direction = currentTarget.position - transform.position;
             direction.y = 0f;
 
-            float angle = Vector3.Angle(
-                transform.forward,
-                direction
-            );
+            float angle = Vector3.Angle(transform.forward, direction);
 
-            if (distance <= attackRange + 0.5f &&
-                angle <= attackAngle)
-            {
+            if (distance <= attackRange + 0.5f && angle <= attackAngle)
                 targetHealth.TakeDamageServer(attackDamage);
-
-                Debug.Log(
-                    $"[BOT] {name} atingiu {currentTarget.name} " +
-                    $"causando {attackDamage} de dano."
-                );
-            }
         }
 
-        yield return new WaitForSeconds(
-            Mathf.Max(0f, attackRecovery)
-        );
+        yield return new WaitForSeconds(Mathf.Max(0f, attackRecovery));
+
+        if (isStunned)
+            yield break;
 
         isAttacking = false;
         attackCoroutine = null;
@@ -585,9 +624,7 @@ public class MechaBotAI : NetworkBehaviour
         if (currentTarget == null)
             return;
 
-        Vector3 awayDirection =
-            transform.position - currentTarget.position;
-
+        Vector3 awayDirection = transform.position - currentTarget.position;
         awayDirection.y = 0f;
 
         if (awayDirection.sqrMagnitude < 0.01f)
@@ -598,25 +635,18 @@ public class MechaBotAI : NetworkBehaviour
 
         awayDirection.Normalize();
 
-        Vector3 lateral = Vector3.Cross(
-            Vector3.up,
-            awayDirection
-        );
-
+        Vector3 lateral = Vector3.Cross(Vector3.up, awayDirection);
         float side = preferredAngle % 2f > 1f ? 1f : -1f;
 
         Vector3 retreatDirection =
             (awayDirection + lateral * side * 0.5f).normalized;
 
-        Vector3 destination =
-            transform.position +
-            retreatDirection * retreatDistance;
-
-        NavMeshHit hit;
+        Vector3 destination = transform.position +
+                              retreatDirection * retreatDistance;
 
         if (NavMesh.SamplePosition(
             destination,
-            out hit,
+            out NavMeshHit hit,
             3f,
             NavMesh.AllAreas))
         {
@@ -626,7 +656,6 @@ public class MechaBotAI : NetworkBehaviour
         agent.speed = retreatSpeed;
         agent.stoppingDistance = 0f;
         agent.isStopped = false;
-
         agent.SetDestination(destination);
     }
 
@@ -635,16 +664,13 @@ public class MechaBotAI : NetworkBehaviour
         if (currentTarget == null)
             return;
 
-        Vector3 direction =
-            currentTarget.position - transform.position;
-
+        Vector3 direction = currentTarget.position - transform.position;
         direction.y = 0f;
 
         if (direction.sqrMagnitude < 0.001f)
             return;
 
-        Quaternion targetRotation =
-            Quaternion.LookRotation(direction);
+        Quaternion targetRotation = Quaternion.LookRotation(direction);
 
         transform.rotation = Quaternion.Slerp(
             transform.rotation,
@@ -665,25 +691,19 @@ public class MechaBotAI : NetworkBehaviour
             agent.isOnNavMesh &&
             !agent.isStopped)
         {
-            localVelocity = transform.InverseTransformDirection(
-                agent.velocity
-            );
+            localVelocity = transform.InverseTransformDirection(agent.velocity);
         }
 
         float currentSpeed = localVelocity.magnitude;
-
-        float normalizedX = 0f;
-        float normalizedY = 0f;
-
         float referenceSpeed = Mathf.Max(agent.speed, 0.01f);
 
-        normalizedX = Mathf.Clamp(
+        float normalizedX = Mathf.Clamp(
             localVelocity.x / referenceSpeed,
             -1f,
             1f
         );
 
-        normalizedY = Mathf.Clamp(
+        float normalizedY = Mathf.Clamp(
             localVelocity.z / referenceSpeed,
             -1f,
             1f
@@ -713,9 +733,7 @@ public class MechaBotAI : NetworkBehaviour
 
     private void StopMovement()
     {
-        if (agent != null &&
-            agent.enabled &&
-            agent.isOnNavMesh)
+        if (agent != null && agent.enabled && agent.isOnNavMesh)
         {
             agent.isStopped = true;
             agent.ResetPath();
@@ -727,8 +745,15 @@ public class MechaBotAI : NetworkBehaviour
         if (attackCoroutine != null)
             StopCoroutine(attackCoroutine);
 
+        if (stunCoroutine != null)
+            StopCoroutine(stunCoroutine);
+
+        attackCoroutine = null;
+        stunCoroutine = null;
+
         isAttacking = false;
         isDisengaging = false;
+        isStunned = false;
     }
 
     private void OnDisable()
@@ -736,7 +761,14 @@ public class MechaBotAI : NetworkBehaviour
         if (attackCoroutine != null)
             StopCoroutine(attackCoroutine);
 
+        if (stunCoroutine != null)
+            StopCoroutine(stunCoroutine);
+
+        attackCoroutine = null;
+        stunCoroutine = null;
+
         isAttacking = false;
         isDisengaging = false;
+        isStunned = false;
     }
 }

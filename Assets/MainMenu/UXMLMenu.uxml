@@ -1,15 +1,20 @@
 
 <ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+
     <ui:Style src="project://database/Assets/UI%20Tools/USSmenu.uss?fileID=7433441132597879392&amp;guid=2292c6ae1164daa43b6dc877ba445f4a&amp;type=3#USSmenu"/>
 
-    <ui:VisualElement name="Root" style="position: absolute; width: 1920px; height: 1080px;">
+    <ui:VisualElement name="Root">
 
         <ui:Label name="Title" text="MECHA COLOSSEUM"/>
 
         <ui:VisualElement name="MenuButtons">
+
             <ui:Button name="PlayButton" text="JOGAR"/>
+
             <ui:Button name="SettingsButton" text="CONFIGURAÇÕES"/>
+
             <ui:Button name="QuitButton" text="SAIR"/>
+
         </ui:VisualElement>
 
         <ui:VisualElement name="SettingsPanel">
@@ -19,7 +24,9 @@
             <ui:Label text="ÁUDIO" class="SettingsSection"/>
 
             <ui:Label text="Volume geral" class="SettingsLabel"/>
+
             <ui:Slider name="VolumeSlider" low-value="0" high-value="1" value="1"/>
+
             <ui:Label name="VolumeValue" text="100%"/>
 
             <ui:Label text="CONTROLES" class="SettingsSection"/>
@@ -62,5 +69,7 @@
             <ui:Button name="BackButton" text="VOLTAR"/>
 
         </ui:VisualElement>
+
     </ui:VisualElement>
+
 </ui:UXML>

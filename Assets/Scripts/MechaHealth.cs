@@ -25,7 +25,6 @@ public class MechaHealth : NetworkBehaviour
     [Header("Player Death")]
     [SerializeField] private bool hidePlayerOnDeath = true;
 
-    [Tooltip("Componentes de movimento e combate que serão desativados ao morrer.")]
     [SerializeField] private Behaviour[] disableOnDeath;
 
     private readonly NetworkVariable<float> currentHealth =
@@ -120,18 +119,7 @@ public class MechaHealth : NetworkBehaviour
         }
         else if (animator != null)
         {
-            Debug.LogWarning(
-                "[MECHA] NetworkAnimator não encontrado em " + name +
-                ". A animação será executada apenas localmente."
-            );
-
             animator.SetTrigger(triggerName);
-        }
-        else
-        {
-            Debug.LogWarning(
-                "[MECHA] Animator não encontrado em " + name
-            );
         }
     }
 
@@ -146,7 +134,20 @@ public class MechaHealth : NetworkBehaviour
         );
 
         if (newHealth > 0f)
+        {
             PlayAnimationServer(hitTrigger);
+
+            if (CompareTag("Enemy"))
+            {
+                MechaBotAI botAI = GetComponent<MechaBotAI>();
+
+                if (botAI == null)
+                    botAI = GetComponentInChildren<MechaBotAI>();
+
+                if (botAI != null)
+                    botAI.StunServer();
+            }
+        }
 
         currentHealth.Value = newHealth;
 
@@ -183,10 +184,6 @@ public class MechaHealth : NetworkBehaviour
             else if (previous <= 0f && current > 0f)
                 EnablePlayerLocally();
         }
-
-        Debug.Log(
-            $"[MECHA] {name} | Vida atualizada: {current}/{maxHealth}"
-        );
     }
 
     private void HandleDeathServer()
@@ -209,22 +206,14 @@ public class MechaHealth : NetworkBehaviour
         }
 
         Debug.LogWarning(
-            $"[MECHA] {name} morreu, mas a tag precisa ser Player ou Enemy."
+            $"[MECHA] {name} morreu, mas precisa ter a tag Player ou Enemy."
         );
     }
 
     private void HandleEnemyDeathServer()
     {
-        Debug.Log(
-            $"[MECHA] Inimigo derrotado: {name}. " +
-            $"Despawn em {enemyDespawnDelay} segundos."
-        );
-
         StopEnemyMovement();
-
         DisableDeathComponents();
-
-        // Mantém Animator e NetworkAnimator ativos.
         PlayAnimationServer(deathTrigger);
 
         StartCoroutine(DespawnEnemyAfterAnimation());
@@ -232,7 +221,6 @@ public class MechaHealth : NetworkBehaviour
 
     private void StopEnemyMovement()
     {
-        // Procura o NavMeshAgent no objeto ou em seus filhos.
         NavMeshAgent agent = GetComponentInChildren<NavMeshAgent>(true);
 
         if (agent == null)
@@ -258,24 +246,13 @@ public class MechaHealth : NetworkBehaviour
 
         foreach (Behaviour component in disableOnDeath)
         {
-            if (component == null)
-                continue;
-
-            if (component == this)
-                continue;
-
-            // Não desativa a animação de morte.
-            if (component == animator)
-                continue;
-
-            if (component == networkAnimator)
+            if (component == null ||
+                component == this ||
+                component == animator ||
+                component == networkAnimator)
                 continue;
 
             component.enabled = false;
-
-            Debug.Log(
-                $"[MECHA] Componente desativado pela morte: {component.GetType().Name}"
-            );
         }
     }
 
@@ -287,21 +264,11 @@ public class MechaHealth : NetworkBehaviour
             yield break;
 
         if (NetworkObject != null && NetworkObject.IsSpawned)
-        {
-            Debug.Log(
-                $"[MECHA] Despawn do inimigo: {name}"
-            );
-
             NetworkObject.Despawn(true);
-        }
     }
 
     private void HandlePlayerDeathServer()
     {
-        Debug.Log(
-            $"[MECHA] Jogador derrotado: {name}"
-        );
-
         DisablePlayerClientRpc();
 
         ShowRespawnScreenClientRpc(
@@ -369,10 +336,10 @@ public class MechaHealth : NetworkBehaviour
         {
             foreach (Behaviour component in disableOnDeath)
             {
-                if (component == null || component == this)
-                    continue;
-
-                if (component == animator || component == networkAnimator)
+                if (component == null ||
+                    component == this ||
+                    component == animator ||
+                    component == networkAnimator)
                     continue;
 
                 component.enabled = true;
@@ -396,13 +363,7 @@ public class MechaHealth : NetworkBehaviour
     public void RequestRespawn()
     {
         if (!IsOwner || !IsSpawned)
-        {
-            Debug.LogWarning(
-                "[RESPAWN] O jogador local não possui este objeto."
-            );
-
             return;
-        }
 
         RequestRespawnServerRpc();
     }
@@ -418,13 +379,7 @@ public class MechaHealth : NetworkBehaviour
             return;
 
         if (!deathHandled || !IsDead || !hasSpawnPosition)
-        {
-            Debug.LogWarning(
-                "[RESPAWN] Solicitação recusada: estado inválido."
-            );
-
             return;
-        }
 
         RespawnPlayerServer();
     }
@@ -442,10 +397,6 @@ public class MechaHealth : NetworkBehaviour
         currentHealth.Value = maxHealth;
         deathHandled = false;
 
-        Debug.Log(
-            $"[RESPAWN] {name} reapareceu com {maxHealth} de vida."
-        );
-
         RespawnedClientRpc(
             CreateOwnerClientRpcParams()
         );
@@ -457,7 +408,10 @@ public class MechaHealth : NetworkBehaviour
         {
             Send = new ClientRpcSendParams
             {
-                TargetClientIds = new ulong[] { OwnerClientId }
+                TargetClientIds = new ulong[]
+                {
+                    OwnerClientId
+                }
             }
         };
     }

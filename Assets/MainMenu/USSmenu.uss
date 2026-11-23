@@ -45,6 +45,16 @@ Button:hover {
     color: rgb(255, 255, 255);
 }
 
+Button:focus {
+    background-color: rgb(25, 90, 140);
+    color: rgb(255, 255, 255);
+}
+
+Button:active {
+    background-color: rgb(10, 100, 165);
+    color: rgb(255, 255, 255);
+}
+
 #PlayButton {
     background-color: rgb(10, 100, 165);
     border-left-color: rgb(100, 220, 255);
@@ -122,4 +132,23 @@ Button:hover {
 #BackButton {
     margin-top: 22px;
     background-color: rgb(17, 35, 58);
+    border-left-color: rgb(40, 180, 255);
+}
+
+#BackButton:hover {
+    background-color: rgb(25, 90, 140);
+    border-left-color: rgb(100, 220, 255);
+    color: rgb(255, 255, 255);
+}
+
+#BackButton:focus {
+    background-color: rgb(25, 90, 140);
+    border-left-color: rgb(100, 220, 255);
+    color: rgb(255, 255, 255);
+}
+
+#BackButton:active {
+    background-color: rgb(10, 100, 165);
+    border-left-color: rgb(100, 220, 255);
+    color: rgb(255, 255, 255);
 }

@@ -7,9 +7,11 @@ public class HUDController : MonoBehaviour
 {
     [Header("Referencias")]
     [SerializeField] private UIDocument uiDocument;
+    [SerializeField] private Camera playerCamera;
 
     [Header("Configuracao")]
     [SerializeField] private bool showEnemyPanelAtStart = false;
+    [SerializeField] private float targetDistance = 100f;
 
     private VisualElement root;
     private VisualElement playerHealthFill;
@@ -81,6 +83,9 @@ public class HUDController : MonoBehaviour
         SetEnemyHealth(100f, 100f);
         HideEnemyHealth();
         SetDashReady();
+
+        if (playerCamera == null)
+            playerCamera = Camera.main;
     }
 
     private void OnEnable()
@@ -95,11 +100,13 @@ public class HUDController : MonoBehaviour
 
     private void Update()
     {
-        // Tenta encontrar o jogador local até o Netcode terminar
-        // de criar e associar o PlayerObject.
         if (localPlayerHealth == null)
             TryConnectPlayerHealth();
 
+        if (playerCamera == null)
+            playerCamera = Camera.main;
+
+        UpdateEnemyTarget();
         UpdateDashCooldown();
     }
 
@@ -140,7 +147,6 @@ public class HUDController : MonoBehaviour
 
         localPlayerHealth.HealthChanged += OnPlayerHealthChanged;
 
-        // Atualiza imediatamente com a vida atual.
         SetPlayerHealth(
             localPlayerHealth.CurrentHealth,
             localPlayerHealth.MaxHealth
@@ -163,6 +169,43 @@ public class HUDController : MonoBehaviour
         float maxHealth)
     {
         SetPlayerHealth(currentHealth, maxHealth);
+    }
+
+    private void UpdateEnemyTarget()
+    {
+        if (playerCamera == null)
+            return;
+
+        Vector2 screenPosition = new Vector2(
+            Screen.width * 0.5f,
+            Screen.height * 0.4f
+        );
+
+        Ray ray = playerCamera.ScreenPointToRay(screenPosition);
+
+        if (Physics.Raycast(
+            ray,
+            out RaycastHit hit,
+            targetDistance,
+            ~0,
+            QueryTriggerInteraction.Ignore))
+        {
+            MechaHealth health =
+                hit.collider.GetComponentInParent<MechaHealth>();
+
+            if (health != null && health.CompareTag("Enemy"))
+            {
+                SetEnemyTarget(
+                    health.gameObject.name,
+                    health.CurrentHealth,
+                    health.MaxHealth
+                );
+
+                return;
+            }
+        }
+
+        ClearEnemyTarget();
     }
 
     private void IgnorarCliquesNosElementosVisuais(

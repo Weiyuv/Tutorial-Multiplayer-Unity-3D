@@ -1,0 +1,14 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/PauseMenu/PauseUSS.uss?fileID=7433441132597879392&amp;guid=3626c4aadaf214b43813c0de7e46483e&amp;type=3#PauseUSS"/>
+    <ui:VisualElement name="Root" class="pause-root">
+        <ui:VisualElement name="PausePanel" class="pause-panel">
+            <ui:Label text="PAUSADO" class="pause-title"/>
+            <ui:VisualElement name="MenuButtons" class="pause-buttons">
+                <ui:Button name="ResumeButton" text="CONTINUAR" class="pause-button primary-button"/>
+                <ui:Button name="MainMenuButton" text="VOLTAR AO MENU PRINCIPAL" class="pause-button"/>
+                <ui:Button name="QuitButton" text="SAIR" class="pause-button quit-button"/>
+            </ui:VisualElement>
+            <ui:Label text="Pressione ESC para continuar" class="pause-hint"/>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

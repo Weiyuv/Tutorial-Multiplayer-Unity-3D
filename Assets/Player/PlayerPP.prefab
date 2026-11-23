@@ -266,7 +266,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MechaHealth
   ShowTopMostFoldoutHeaderGroup: 1
-  maxHealth: 100
+  maxHealth: 100000
   animator: {fileID: 5037112768344255577}
   networkAnimator: {fileID: 5845475554933644490}
   hitTrigger: Hit
