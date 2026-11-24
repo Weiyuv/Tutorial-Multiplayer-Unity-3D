@@ -1,0 +1,87 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/60+HUD/60USS.uss?fileID=7433441132597879392&amp;guid=90e2869456346244392ac57c2acae5e9&amp;type=3#60USS"/>
+    <ui:VisualElement name="MainContainer">
+        <ui:VisualElement name="MainHeader">
+            <ui:Label name="Title" text="MECHA COLOSSEUM"/>
+        </ui:VisualElement>
+        <ui:VisualElement name="MenuButtons">
+            <ui:Button name="PlayButton" class="MenuCard PlayCard">
+                <ui:VisualElement class="CardIcon PlayIcon">
+                    <ui:Label text="▶" class="IconText"/>
+                </ui:VisualElement>
+                <ui:VisualElement class="CardText">
+                    <ui:Label text="JOGAR" class="CardTitle"/>
+                    <ui:Label text="Começar uma partida" class="CardDescription"/>
+                </ui:VisualElement>
+                <ui:Label text="›" class="CardArrow"/>
+            </ui:Button>
+            <ui:Button name="SettingsButton" class="MenuCard">
+                <ui:VisualElement class="CardIcon SettingsIcon">
+                    <ui:Label text="⚙" class="IconText"/>
+                </ui:VisualElement>
+                <ui:VisualElement class="CardText">
+                    <ui:Label text="CONFIGURAÇÕES" class="CardTitle"/>
+                    <ui:Label text="Áudio e controles" class="CardDescription"/>
+                </ui:VisualElement>
+                <ui:Label text="›" class="CardArrow"/>
+            </ui:Button>
+            <ui:Button name="QuitButton" class="MenuCard">
+                <ui:VisualElement class="CardIcon ExitIcon">
+                    <ui:Label text="×" class="IconText"/>
+                </ui:VisualElement>
+                <ui:VisualElement class="CardText">
+                    <ui:Label text="SAIR" class="CardTitle"/>
+                    <ui:Label text="Fechar o jogo" class="CardDescription"/>
+                </ui:VisualElement>
+                <ui:Label text="›" class="CardArrow"/>
+            </ui:Button>
+        </ui:VisualElement>
+        <ui:VisualElement name="SettingsPanel">
+            <ui:VisualElement name="SettingsHeader">
+                <ui:Label name="SettingsTitle" text="CONFIGURAÇÕES"/>
+            </ui:VisualElement>
+            <ui:ScrollView name="SettingsScroll" class="SettingsScroll">
+                <ui:VisualElement name="AudioSection" class="SettingsCard">
+                    <ui:Label text="ÁUDIO" class="SectionTitle"/>
+                    <ui:Label text="Volume geral" class="OptionLabel"/>
+                    <ui:Slider name="VolumeSlider" low-value="0" high-value="1" value="1"/>
+                    <ui:Label name="VolumeValue" text="100%"/>
+                </ui:VisualElement>
+                <ui:VisualElement name="ControlsSection" class="SettingsCard">
+                    <ui:Label text="CONTROLES" class="SectionTitle"/>
+                    <ui:VisualElement class="ControlRow">
+                        <ui:Label text="Mover para frente" class="ControlName"/>
+                        <ui:Button name="ForwardBinding" text="W" class="BindingButton"/>
+                    </ui:VisualElement>
+                    <ui:VisualElement class="ControlRow">
+                        <ui:Label text="Mover para trás" class="ControlName"/>
+                        <ui:Button name="BackwardBinding" text="S" class="BindingButton"/>
+                    </ui:VisualElement>
+                    <ui:VisualElement class="ControlRow">
+                        <ui:Label text="Mover para esquerda" class="ControlName"/>
+                        <ui:Button name="LeftBinding" text="A" class="BindingButton"/>
+                    </ui:VisualElement>
+                    <ui:VisualElement class="ControlRow">
+                        <ui:Label text="Mover para direita" class="ControlName"/>
+                        <ui:Button name="RightBinding" text="D" class="BindingButton"/>
+                    </ui:VisualElement>
+                    <ui:VisualElement class="ControlRow">
+                        <ui:Label text="Dash" class="ControlName"/>
+                        <ui:Button name="DashBinding" text="SHIFT" class="BindingButton"/>
+                    </ui:VisualElement>
+                    <ui:VisualElement class="ControlRow">
+                        <ui:Label text="Atacar" class="ControlName"/>
+                        <ui:Button name="AttackBinding" text="MOUSE 1" class="BindingButton"/>
+                    </ui:VisualElement>
+                    <ui:VisualElement class="ControlRow">
+                        <ui:Label text="Pegar item" class="ControlName"/>
+                        <ui:Button name="PickupBinding" text="E" class="BindingButton"/>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:ScrollView>
+            <ui:VisualElement name="SettingsFooter">
+                <ui:Button name="BackButton" text="VOLTAR AO MENU"/>
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

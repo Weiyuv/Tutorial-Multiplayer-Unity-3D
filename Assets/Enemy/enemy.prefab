@@ -215,6 +215,9 @@ MonoBehaviour:
   networkAnimator: {fileID: 5602293162040080157}
   hitTrigger: Hit
   deathTrigger: Death
+  flashColor: {r: 1, g: 0, b: 0, a: 1}
+  flashCount: 1
+  flashInterval: 0.08
   enemyDespawnDelay: 3
   hidePlayerOnDeath: 0
   disableOnDeath: []
@@ -257,6 +260,7 @@ MonoBehaviour:
   animator: {fileID: 4304430931844063784}
   networkAnimator: {fileID: 5602293162040080157}
   stunDuration: 0.7
+  stunParameter: Hit
   speedParameter: Speed
   strafeXParameter: MoveX
   strafeYParameter: MoveY
@@ -264,7 +268,7 @@ MonoBehaviour:
   attackRange: 1.4
   attackDamage: 5
   attackCooldown: 0.9
-  attackStartDelay: 0.3
+  attackStartDelay: 0.4
   attackRecovery: 0.5
   rotationSpeed: 20
   attackAngle: 45

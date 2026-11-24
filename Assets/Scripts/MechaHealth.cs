@@ -19,6 +19,11 @@ public class MechaHealth : NetworkBehaviour
     [SerializeField] private string hitTrigger = "Hit";
     [SerializeField] private string deathTrigger = "Death";
 
+    [Header("Damage Flash")]
+    [SerializeField] private Color flashColor = Color.red;
+    [SerializeField, Min(1)] private int flashCount = 3;
+    [SerializeField, Min(0.01f)] private float flashInterval = 0.08f;
+
     [Header("Enemy Death")]
     [SerializeField, Min(0f)] private float enemyDespawnDelay = 3f;
 
@@ -39,6 +44,21 @@ public class MechaHealth : NetworkBehaviour
 
     private readonly List<Collider> playerColliders =
         new List<Collider>();
+
+    private class RendererFlashData
+    {
+        public Renderer renderer;
+        public int materialIndex;
+        public MaterialPropertyBlock originalBlock;
+        public MaterialPropertyBlock flashBlock;
+        public string colorProperty;
+        public Color originalColor;
+    }
+
+    private readonly List<RendererFlashData> flashData =
+        new List<RendererFlashData>();
+
+    private Coroutine flashCoroutine;
 
     private Vector3 spawnPosition;
     private Quaternion spawnRotation;
@@ -92,6 +112,8 @@ public class MechaHealth : NetworkBehaviour
     public override void OnNetworkDespawn()
     {
         currentHealth.OnValueChanged -= OnHealthChanged;
+
+        StopDamageFlash();
     }
 
     private void CachePlayerComponents()
@@ -128,6 +150,8 @@ public class MechaHealth : NetworkBehaviour
         if (!IsServer || IsDead || deathHandled || damage <= 0f)
             return;
 
+        DamageFlashClientRpc();
+
         float newHealth = Mathf.Max(
             0f,
             currentHealth.Value - damage
@@ -157,6 +181,143 @@ public class MechaHealth : NetworkBehaviour
 
         if (IsDead)
             HandleDeathServer();
+    }
+
+    [ClientRpc]
+    private void DamageFlashClientRpc()
+    {
+        StartDamageFlash();
+    }
+
+    private void StartDamageFlash()
+    {
+        StopDamageFlash();
+
+        flashCoroutine = StartCoroutine(DamageFlashRoutine());
+    }
+
+    private IEnumerator DamageFlashRoutine()
+    {
+        Renderer[] renderers =
+            GetComponentsInChildren<Renderer>(true);
+
+        flashData.Clear();
+
+        foreach (Renderer rend in renderers)
+        {
+            if (rend == null)
+                continue;
+
+            Material[] materials = rend.sharedMaterials;
+
+            for (int i = 0; i < materials.Length; i++)
+            {
+                Material material = materials[i];
+
+                if (material == null)
+                    continue;
+
+                string colorProperty = null;
+
+                if (material.HasProperty("_BaseColor"))
+                    colorProperty = "_BaseColor";
+                else if (material.HasProperty("_Color"))
+                    colorProperty = "_Color";
+
+                if (string.IsNullOrEmpty(colorProperty))
+                    continue;
+
+                RendererFlashData data = new RendererFlashData
+                {
+                    renderer = rend,
+                    materialIndex = i,
+                    colorProperty = colorProperty,
+                    originalColor = material.GetColor(colorProperty),
+                    originalBlock = new MaterialPropertyBlock(),
+                    flashBlock = new MaterialPropertyBlock()
+                };
+
+                rend.GetPropertyBlock(
+                    data.originalBlock,
+                    i
+                );
+
+                rend.GetPropertyBlock(
+                    data.flashBlock,
+                    i
+                );
+
+                flashData.Add(data);
+            }
+        }
+
+        for (int i = 0; i < flashCount; i++)
+        {
+            ApplyFlashColor();
+
+            yield return new WaitForSecondsRealtime(
+                flashInterval
+            );
+
+            RestoreFlashColor();
+
+            if (i < flashCount - 1)
+            {
+                yield return new WaitForSecondsRealtime(
+                    flashInterval
+                );
+            }
+        }
+
+        RestoreFlashColor();
+
+        flashCoroutine = null;
+        flashData.Clear();
+    }
+
+    private void ApplyFlashColor()
+    {
+        foreach (RendererFlashData data in flashData)
+        {
+            if (data.renderer == null)
+                continue;
+
+            data.flashBlock.SetColor(
+                data.colorProperty,
+                flashColor
+            );
+
+            data.renderer.SetPropertyBlock(
+                data.flashBlock,
+                data.materialIndex
+            );
+        }
+    }
+
+    private void RestoreFlashColor()
+    {
+        foreach (RendererFlashData data in flashData)
+        {
+            if (data.renderer == null)
+                continue;
+
+            data.renderer.SetPropertyBlock(
+                data.originalBlock,
+                data.materialIndex
+            );
+        }
+    }
+
+    private void StopDamageFlash()
+    {
+        if (flashCoroutine != null)
+        {
+            StopCoroutine(flashCoroutine);
+            flashCoroutine = null;
+        }
+
+        RestoreFlashColor();
+        flashData.Clear();
     }
 
     public void HealServer(float amount)

@@ -1,5 +1,6 @@
 
 using System.Collections;
+using System.Collections.Generic;
 using Unity.Netcode;
 using Unity.Netcode.Components;
 using UnityEngine;
@@ -16,6 +17,7 @@ public class MechaBotAI : NetworkBehaviour
 
     [Header("Stun")]
     [SerializeField, Min(0.1f)] private float stunDuration = 1.2f;
+    [SerializeField] private string stunParameter = "Stunned";
 
     private bool isStunned;
     private Coroutine stunCoroutine;
@@ -209,13 +211,8 @@ public class MechaBotAI : NetworkBehaviour
 
         isStunned = true;
 
-        if (attackCoroutine != null)
-        {
-            StopCoroutine(attackCoroutine);
-            attackCoroutine = null;
-        }
+        CancelAttack();
 
-        isAttacking = false;
         isDisengaging = false;
         currentState = TacticalState.Pursuit;
 
@@ -226,9 +223,29 @@ public class MechaBotAI : NetworkBehaviour
             animator.SetFloat(speedParameter, 0f);
             animator.SetFloat(strafeXParameter, 0f);
             animator.SetFloat(strafeYParameter, 0f);
+            animator.SetBool(stunParameter, true);
         }
 
+        if (networkAnimator != null)
+            networkAnimator.SetTrigger("Stun");
+
         stunCoroutine = StartCoroutine(StunRoutine(duration));
+
+        Debug.Log("[MECHA BOT] Atordoado por " + duration + " segundos.");
+    }
+
+    private void CancelAttack()
+    {
+        if (attackCoroutine != null)
+        {
+            StopCoroutine(attackCoroutine);
+            attackCoroutine = null;
+        }
+
+        isAttacking = false;
+
+        if (agent != null && agent.enabled && agent.isOnNavMesh)
+            agent.isStopped = true;
     }
 
     private IEnumerator StunRoutine(float duration)
@@ -247,11 +264,16 @@ public class MechaBotAI : NetworkBehaviour
 
         isStunned = false;
 
+        if (animator != null)
+            animator.SetBool(stunParameter, false);
+
         if (agent != null && agent.enabled && agent.isOnNavMesh)
             agent.isStopped = false;
 
         nextTargetUpdate = 0f;
         nextFlankUpdate = 0f;
+
+        Debug.Log("[MECHA BOT] Stun encerrado.");
     }
 
     private void StopAgentMovement()
@@ -581,7 +603,8 @@ public class MechaBotAI : NetworkBehaviour
 
         yield return new WaitForSeconds(attackStartDelay);
 
-        if (isStunned)
+        // Verifica se o ataque foi cancelado antes de causar dano.
+        if (isStunned || !IsSpawned)
             yield break;
 
         if (currentTarget != null &&
@@ -599,12 +622,16 @@ public class MechaBotAI : NetworkBehaviour
             float angle = Vector3.Angle(transform.forward, direction);
 
             if (distance <= attackRange + 0.5f && angle <= attackAngle)
-                targetHealth.TakeDamageServer(attackDamage);
+            {
+                // Última validação antes de aplicar dano.
+                if (!isStunned && targetHealth != null && !targetHealth.IsDead)
+                    targetHealth.TakeDamageServer(attackDamage);
+            }
         }
 
         yield return new WaitForSeconds(Mathf.Max(0f, attackRecovery));
 
-        if (isStunned)
+        if (isStunned || !IsSpawned)
             yield break;
 
         isAttacking = false;
