@@ -313,6 +313,8 @@ MonoBehaviour:
   ShowTopMostFoldoutHeaderGroup: 1
   collectDistance: 3
   holdPoint: {fileID: 4045527275214798510}
+  animator: {fileID: 5037112768344255577}
+  hasWeaponParameter: HasWeapon
 --- !u!114 &7212865819456172688
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -399,6 +401,10 @@ MonoBehaviour:
       NameHash: 1654612129
       Synchronize: 1
       ParameterType: 9
+    - name: HasWeapon
+      NameHash: -1646273455
+      Synchronize: 1
+      ParameterType: 4
   AnimatorParametersExpanded: 0
 --- !u!114 &6490435586544166721
 MonoBehaviour:

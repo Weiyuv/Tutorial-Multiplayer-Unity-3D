@@ -9,6 +9,10 @@ public class CrystalCollector : NetworkBehaviour
     [SerializeField] private float collectDistance = 3f;
     [SerializeField] private Transform holdPoint;
 
+    [Header("Animator")]
+    [SerializeField] private Animator animator;
+    [SerializeField] private string hasWeaponParameter = "HasWeapon";
+
     private Crystal heldCrystal;
     private bool pickupPending;
 
@@ -16,6 +20,8 @@ public class CrystalCollector : NetworkBehaviour
     {
         if (!IsOwner)
             return;
+
+        UpdateWeaponAnimation();
 
         if (Keyboard.current == null ||
             !Keyboard.current.eKey.wasPressedThisFrame)
@@ -61,6 +67,16 @@ public class CrystalCollector : NetworkBehaviour
         Debug.Log("[COLLECTOR] Solicitando coleta: " + crystal.name);
 
         CollectCrystalServerRpc(crystal.NetworkObjectId);
+    }
+
+    private void UpdateWeaponAnimation()
+    {
+        if (animator == null)
+            return;
+
+        bool hasWeapon = heldCrystal != null && heldCrystal.IsHeld;
+
+        animator.SetBool(hasWeaponParameter, hasWeapon);
     }
 
     private Crystal FindClosestCrystal()
@@ -202,6 +218,8 @@ public class CrystalCollector : NetworkBehaviour
         heldCrystal = crystal;
         pickupPending = false;
 
+        UpdateWeaponAnimation();
+
         Debug.Log("[COLLECTOR] Espada equipada no jogador.");
     }
 
@@ -211,6 +229,8 @@ public class CrystalCollector : NetworkBehaviour
         {
             heldCrystal = null;
             pickupPending = false;
+
+            UpdateWeaponAnimation();
         }
     }
 

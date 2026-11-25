@@ -259,7 +259,7 @@ MonoBehaviour:
   agent: {fileID: 1426172491220393718}
   animator: {fileID: 4304430931844063784}
   networkAnimator: {fileID: 5602293162040080157}
-  stunDuration: 0.7
+  stunDuration: 0.4
   stunParameter: Hit
   speedParameter: Speed
   strafeXParameter: MoveX
