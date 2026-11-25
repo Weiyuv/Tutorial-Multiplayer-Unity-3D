@@ -106,7 +106,7 @@ public class MechaHealth : NetworkBehaviour
         if (CompareTag("Player"))
             CachePlayerComponents();
 
-        HealthChanged?.Invoke(CurrentHealth, MaxHealth);
+        HealthChanged?.Invoke(CurrentHealth, CurrentHealth);
     }
 
     public override void OnNetworkDespawn()
@@ -333,7 +333,7 @@ public class MechaHealth : NetworkBehaviour
 
     private void OnHealthChanged(float previous, float current)
     {
-        HealthChanged?.Invoke(current, maxHealth);
+        HealthChanged?.Invoke(previous, current);
 
         if (previous > 0f && current <= 0f)
             Death?.Invoke();
