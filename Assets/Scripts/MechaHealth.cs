@@ -45,6 +45,9 @@ public class MechaHealth : NetworkBehaviour
     private readonly List<Collider> playerColliders =
         new List<Collider>();
 
+    private readonly List<Collider> enemyColliders =
+        new List<Collider>();
+
     private class RendererFlashData
     {
         public Renderer renderer;
@@ -374,7 +377,11 @@ public class MechaHealth : NetworkBehaviour
     private void HandleEnemyDeathServer()
     {
         StopEnemyMovement();
+
+        DisableEnemyCollidersClientRpc();
+
         DisableDeathComponents();
+
         PlayAnimationServer(deathTrigger);
 
         StartCoroutine(DespawnEnemyAfterAnimation());
@@ -397,6 +404,25 @@ public class MechaHealth : NetworkBehaviour
             }
 
             agent.enabled = false;
+        }
+    }
+
+    [ClientRpc]
+    private void DisableEnemyCollidersClientRpc()
+    {
+        if (!CompareTag("Enemy"))
+            return;
+
+        enemyColliders.Clear();
+
+        enemyColliders.AddRange(
+            GetComponentsInChildren<Collider>(true)
+        );
+
+        foreach (Collider enemyCollider in enemyColliders)
+        {
+            if (enemyCollider != null)
+                enemyCollider.enabled = false;
         }
     }
 

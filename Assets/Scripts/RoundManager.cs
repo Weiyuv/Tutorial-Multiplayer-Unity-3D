@@ -21,6 +21,13 @@ public class RoundManager : NetworkBehaviour
     [SerializeField] private float firstRoundDelay = 3f;
     [SerializeField] private float intermissionDuration = 10f;
 
+    [Header("Enemies Per Round")]
+    [SerializeField]
+    private List<int> enemiesPerRound = new List<int>
+    {
+        3, 4, 5, 6, 8, 9, 11, 13, 15, 18
+    };
+
     public NetworkVariable<int> CurrentRound = new NetworkVariable<int>(
         0,
         NetworkVariableReadPermission.Everyone,
@@ -55,10 +62,20 @@ public class RoundManager : NetworkBehaviour
 
     private Coroutine roundCoroutine;
 
-    private readonly int[] enemiesPerRound =
+    private void OnValidate()
     {
-        3, 4, 5, 6, 8, 9, 11, 13, 15, 18
-    };
+        maxRounds = Mathf.Max(1, maxRounds);
+
+        if (enemiesPerRound == null)
+            enemiesPerRound = new List<int>();
+
+        maxRounds = Mathf.Min(maxRounds, enemiesPerRound.Count);
+
+        for (int i = 0; i < enemiesPerRound.Count; i++)
+        {
+            enemiesPerRound[i] = Mathf.Max(0, enemiesPerRound[i]);
+        }
+    }
 
     public override void OnNetworkSpawn()
     {
@@ -84,6 +101,14 @@ public class RoundManager : NetworkBehaviour
             Debug.LogError("RoundManager: Nenhum Spawn Point foi configurado.");
             return;
         }
+
+        if (enemiesPerRound == null || enemiesPerRound.Count == 0)
+        {
+            Debug.LogError("RoundManager: Configure a quantidade de inimigos por round.");
+            return;
+        }
+
+        maxRounds = Mathf.Clamp(maxRounds, 1, enemiesPerRound.Count);
 
         roundCoroutine = StartCoroutine(RunRounds());
     }
@@ -112,9 +137,7 @@ public class RoundManager : NetworkBehaviour
             int round = CurrentRound.Value + 1;
             CurrentRound.Value = round;
 
-            int enemyCount = enemiesPerRound[
-                Mathf.Clamp(round - 1, 0, enemiesPerRound.Length - 1)
-            ];
+            int enemyCount = enemiesPerRound[round - 1];
 
             Debug.Log("Iniciando Round " + round + " com " + enemyCount + " inimigos.");
 

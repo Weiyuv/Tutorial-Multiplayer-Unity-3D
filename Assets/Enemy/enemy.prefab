@@ -218,7 +218,7 @@ MonoBehaviour:
   flashColor: {r: 1, g: 0, b: 0, a: 1}
   flashCount: 1
   flashInterval: 0.08
-  enemyDespawnDelay: 3
+  enemyDespawnDelay: 30000
   hidePlayerOnDeath: 0
   disableOnDeath: []
 --- !u!195 &1426172491220393718
