@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using Unity.Netcode;
 
 public class MatchAudioManager : MonoBehaviour
 {
@@ -56,12 +57,13 @@ public class MatchAudioManager : MonoBehaviour
     private readonly Dictionary<MechaHealth, HealthRegistration> registeredHealth = new();
     private readonly Dictionary<MechaMovement, bool> dashStates = new();
     private readonly HashSet<CrystalSwordAttack> registeredAttacks = new();
-
     private readonly List<MechaMovement> dashSnapshot = new();
 
     private float nextScanTime;
     private bool backgroundStarted;
     private bool deathSoundPlaying;
+    private bool matchAudioStarted;
+    private bool connectedToMatch;
 
     private void Awake()
     {
@@ -80,12 +82,20 @@ public class MatchAudioManager : MonoBehaviour
 
     private void Start()
     {
-        StartCoroutine(PlayGameStartSequence());
         ScanObjects();
     }
 
     private void Update()
     {
+        if (!connectedToMatch && VerificarConexao())
+        {
+            connectedToMatch = true;
+            StartCoroutine(PlayGameStartSequence());
+        }
+
+        if (!connectedToMatch)
+            return;
+
         if (Time.unscaledTime >= nextScanTime)
         {
             nextScanTime = Time.unscaledTime + scanInterval;
@@ -96,18 +106,37 @@ public class MatchAudioManager : MonoBehaviour
         UpdateSwordSwing();
     }
 
+    private bool VerificarConexao()
+    {
+        NetworkManager nm = NetworkManager.Singleton;
+
+        if (nm == null)
+            return false;
+
+        return nm.IsListening && nm.IsConnectedClient;
+    }
+
     private IEnumerator PlayGameStartSequence()
     {
+        if (matchAudioStarted)
+            yield break;
+
+        matchAudioStarted = true;
+
         if (gameStartDelay > 0f)
             yield return new WaitForSecondsRealtime(gameStartDelay);
 
         if (gameStartSound != null)
         {
+            musicSource.Stop();
+            musicSource.loop = false;
             musicSource.PlayOneShot(gameStartSound, gameStartVolume);
+
             yield return new WaitForSecondsRealtime(gameStartSound.length);
         }
 
         StartBackgroundMusic();
+        ScanObjects();
     }
 
     private void StartBackgroundMusic()
